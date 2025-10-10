@@ -5,6 +5,7 @@ namespace humhubContrib\modules\jitsiMeetCloud8x8;
 use humhub\modules\ui\menu\MenuLink;
 use humhub\widgets\TopMenu;
 use humhub\modules\content\widgets\WallCreateContentForm;
+use humhub\modules\user\widgets\AccountMenu;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\widgets\QuickVideoChatButton;
 use Yii;
@@ -47,6 +48,26 @@ class Events
                 'contentContainer' => $form->contentContainer
             ], ['sortOrder' => 100]);
         }
+    }
+
+    /**
+     * Hook into user account menu to add video chat preferences
+     */
+    public static function onAccountMenuInit($event)
+    {
+        if (Yii::$app->user->isGuest) {
+            return;
+        }
+
+        /** @var AccountMenu $menu */
+        $menu = $event->sender;
+
+        $menu->addEntry(new MenuLink([
+            'label' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video Chat Notifications'),
+            'url' => ['/jitsi-meet-cloud-8x8/preferences'],
+            'icon' => 'bell',
+            'sortOrder' => 500,
+        ]));
     }
 
 }
