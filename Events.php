@@ -4,7 +4,9 @@ namespace humhubContrib\modules\jitsiMeetCloud8x8;
 
 use humhub\modules\ui\menu\MenuLink;
 use humhub\widgets\TopMenu;
+use humhub\modules\content\widgets\WallCreateContentForm;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
+use humhubContrib\modules\jitsiMeetCloud8x8\widgets\QuickVideoChatButton;
 use Yii;
 
 class Events
@@ -29,6 +31,22 @@ class Events
             'isActive' => MenuLink::isActiveState('jitsi-meet-cloud-8x8', 'room'),
             'sortOrder' => 400,
         ]));
+    }
+
+    /**
+     * Hook into space stream composer to add video chat button
+     */
+    public static function onWallCreateContentFormInit($event)
+    {
+        /** @var WallCreateContentForm $form */
+        $form = $event->sender;
+        
+        // Only add to space contexts
+        if ($form->contentContainer instanceof \humhub\modules\space\models\Space) {
+            $form->addWidget(QuickVideoChatButton::class, [
+                'contentContainer' => $form->contentContainer
+            ], ['sortOrder' => 100]);
+        }
     }
 
 }
