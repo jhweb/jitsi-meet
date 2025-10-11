@@ -294,3 +294,4 @@ class CalendarVideoChat extends \yii\db\ActiveRecord
         }
     }
 }
+

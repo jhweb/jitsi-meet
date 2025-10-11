@@ -224,3 +224,4 @@ class VideoChatParticipant extends \yii\db\ActiveRecord
         return $query->all();
     }
 }
+

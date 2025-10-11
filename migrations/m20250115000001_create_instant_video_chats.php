@@ -75,3 +75,4 @@ class m20250115000001_create_instant_video_chats extends Migration
         $this->dropTable('jitsi_instant_video_chat');
     }
 }
+

@@ -131,3 +131,4 @@ class WallEntryInstantChat extends \humhub\widgets\BaseStack
         );
     }
 }
+

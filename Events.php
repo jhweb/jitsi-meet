@@ -4,10 +4,10 @@ namespace humhubContrib\modules\jitsiMeetCloud8x8;
 
 use humhub\modules\ui\menu\MenuLink;
 use humhub\widgets\TopMenu;
-use humhub\modules\content\widgets\WallCreateContentForm;
+use humhub\modules\content\widgets\WallCreateContentMenu;
 use humhub\modules\user\widgets\AccountMenu;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
-use humhubContrib\modules\jitsiMeetCloud8x8\widgets\QuickVideoChatButton;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat;
 use Yii;
 
 class Events
@@ -35,18 +35,28 @@ class Events
     }
 
     /**
-     * Hook into space stream composer to add video chat button
+     * Hook into space stream composer menu to add video chat button
      */
-    public static function onWallCreateContentFormInit($event)
+    public static function onWallCreateContentMenuInit($event)
     {
-        /** @var WallCreateContentForm $form */
-        $form = $event->sender;
+        /** @var WallCreateContentMenu $menu */
+        $menu = $event->sender;
         
         // Only add to space contexts
-        if ($form->contentContainer instanceof \humhub\modules\space\models\Space) {
-            $form->addWidget(QuickVideoChatButton::class, [
-                'contentContainer' => $form->contentContainer
-            ], ['sortOrder' => 100]);
+        if ($menu->contentContainer instanceof \humhub\modules\space\models\Space) {
+            // Check if user has permission to create video chats
+            if ($menu->contentContainer->can(CreateVideoChat::class)) {
+                $menu->addEntry(new MenuLink([
+                    'label' => Yii::t('JitsiMeetCloud8x8Module.base', 'Start Video Chat'),
+                    'icon' => 'video-camera',
+                    'url' => '#',
+                    'sortOrder' => 100,
+                    'htmlOptions' => [
+                        'data-action-click' => 'ui.modal.load',
+                        'data-action-url' => $menu->contentContainer->createUrl('/jitsi-meet-cloud-8x8/space/quick-post-modal'),
+                    ],
+                ]));
+            }
         }
     }
 

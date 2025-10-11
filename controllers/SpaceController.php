@@ -188,3 +188,4 @@ class SpaceController extends ContentContainerController
         return $result;
     }
 }
+

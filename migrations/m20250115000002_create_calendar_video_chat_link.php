@@ -59,3 +59,4 @@ class m20250115000002_create_calendar_video_chat_link extends Migration
         $this->dropTable('jitsi_calendar_video_chat');
     }
 }
+

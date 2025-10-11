@@ -3,7 +3,7 @@
 /** @noinspection MissedFieldInspection */
 
 use humhub\widgets\TopMenu;
-use humhub\modules\content\widgets\WallCreateContentForm;
+use humhub\modules\content\widgets\WallCreateContentMenu;
 use humhub\modules\user\widgets\AccountMenu;
 
 return [
@@ -12,7 +12,7 @@ return [
     'namespace' => 'humhubContrib\modules\jitsiMeetCloud8x8',
     'events' => [
         ['class' => TopMenu::class, 'event' => TopMenu::EVENT_INIT, 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onTopMenuInit']],
-        ['class' => WallCreateContentForm::class, 'event' => 'init', 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onWallCreateContentFormInit']],
+        ['class' => WallCreateContentMenu::class, 'event' => 'init', 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onWallCreateContentMenuInit']],
         ['class' => AccountMenu::class, 'event' => 'init', 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onAccountMenuInit']],
     ],
     'urlManagerRules' => [

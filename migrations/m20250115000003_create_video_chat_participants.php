@@ -56,3 +56,4 @@ class m20250115000003_create_video_chat_participants extends Migration
         $this->dropTable('jitsi_video_chat_participant');
     }
 }
+

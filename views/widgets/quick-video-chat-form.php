@@ -37,3 +37,4 @@ use yii\widgets\ActiveForm;
         <?= Yii::t('JitsiMeetCloud8x8Module.base', 'The video chat will be posted to the space stream and all members will be notified.') ?>
     </div>
 </div>
+

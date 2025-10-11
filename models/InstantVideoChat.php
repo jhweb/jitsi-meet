@@ -284,3 +284,4 @@ class InstantVideoChat extends ContentActiveRecord
         return false;
     }
 }
+

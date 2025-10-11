@@ -212,3 +212,4 @@ class UserNotificationPreference extends \yii\base\Model
         return true;
     }
 }
+

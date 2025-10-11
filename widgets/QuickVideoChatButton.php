@@ -80,3 +80,4 @@ class QuickVideoChatButton extends \humhub\widgets\BaseStack
         ]);
     }
 }
+

@@ -107,3 +107,4 @@ class PreferencesController extends Controller
         ];
     }
 }
+
