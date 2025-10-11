@@ -216,9 +216,10 @@ class InstantVideoChat extends ContentActiveRecord
 
     /**
      * Get the wall entry widget for this video chat
+     * @param array $params
      * @return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallEntryInstantChat
      */
-    public function getWallOut()
+    public function getWallOut($params = [])
     {
         return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallEntryInstantChat::widget(['model' => $this]);
     }
