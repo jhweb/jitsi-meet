@@ -32,6 +32,11 @@ use Yii;
 class InstantVideoChat extends ContentActiveRecord
 {
     /**
+     * @var string The wall entry widget class
+     */
+    public $wallEntryClass = 'humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat';
+
+    /**
      * {@inheritdoc}
      */
     public static function tableName()
@@ -89,6 +94,7 @@ class InstantVideoChat extends ContentActiveRecord
             if ($insert) {
                 $this->created_at = date('Y-m-d H:i:s');
                 $this->started_at = date('Y-m-d H:i:s');
+                $this->created_by = $this->content->created_by;
                 
                 // Generate room name if title is empty
                 if (empty($this->room_name)) {
@@ -99,6 +105,30 @@ class InstantVideoChat extends ContentActiveRecord
             return true;
         }
         return false;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function afterSave($insert, $changedAttributes)
+    {
+        parent::afterSave($insert, $changedAttributes);
+        
+        if ($insert) {
+            // Set the content container based on space_id or user_id
+            if ($this->space_id) {
+                $this->content->container = Space::findOne($this->space_id);
+            } elseif ($this->user_id) {
+                $this->content->container = User::findOne($this->user_id);
+            }
+            
+            // Set content properties
+            $this->content->visibility = \humhub\modules\content\models\Content::VISIBILITY_PRIVATE;
+            $this->content->stream_channel = 'default';
+            
+            // Save the content
+            $this->content->save();
+        }
     }
 
     /**
@@ -215,14 +245,41 @@ class InstantVideoChat extends ContentActiveRecord
     }
 
     /**
-     * Get the wall entry widget for this video chat
-     * @param array $params
-     * @return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallEntryInstantChat
+     * Get the content name for this video chat
+     * @return string
      */
-    public function getWallOut($params = [])
+    public function getContentName()
     {
-        return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallEntryInstantChat::widget(['model' => $this]);
+        return 'Video Chat';
     }
+
+    /**
+     * Get the icon for this video chat
+     * @return string
+     */
+    public function getIcon()
+    {
+        return 'video-camera';
+    }
+
+    /**
+     * Get the wall entry widget for this video chat
+     * @return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat
+     */
+    public function getWallEntryWidget()
+    {
+        return new \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat(['model' => $this]);
+    }
+
+    /**
+     * Get the module ID for this content
+     * @return string
+     */
+    public function getModuleId()
+    {
+        return 'jitsi-meet-cloud-8x8';
+    }
+
 
     /**
      * Check if user can join this video chat

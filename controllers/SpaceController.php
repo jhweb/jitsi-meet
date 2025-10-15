@@ -20,7 +20,7 @@ class SpaceController extends ContentContainerController
     protected function getAccessRules()
     {
         return [
-            ['permissions' => [JoinVideoChat::class], 'actions' => ['quick-post-modal']],
+            ['permissions' => [JoinVideoChat::class], 'actions' => ['quick-post-modal', 'create-form']],
             ['permissions' => [CreateVideoChat::class], 'actions' => ['quick-post', 'end-chat']]
         ];
     }
@@ -41,16 +41,37 @@ class SpaceController extends ContentContainerController
     }
 
     /**
+     * Create form for inline display
+     * @return string
+     */
+    public function actionCreateForm()
+    {
+        $videoChat = new InstantVideoChat();
+        $videoChat->content->container = $this->contentContainer;
+        
+        if (!$videoChat->content->canEdit()) {
+            throw new \yii\web\ForbiddenHttpException();
+        }
+
+        return $this->renderAjaxPartial(\humhubContrib\modules\jitsiMeetCloud8x8\widgets\Form::widget([
+            'contentContainer' => $this->contentContainer,
+        ]));
+    }
+
+    /**
      * Create instant video chat and post to space stream
-     * @return array
+     * @return array|string
      */
     public function actionQuickPost()
     {
-        Yii::$app->response->format = 'json';
-
         // Check permissions
         if (!$this->contentContainer->can(CreateVideoChat::class)) {
-            return ['error' => Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to create video chats in this space.')];
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = 'json';
+                return ['error' => Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to create video chats in this space.')];
+            }
+            Yii::$app->session->setFlash('error', Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to create video chats in this space.'));
+            return $this->redirect($this->contentContainer->createUrl('/space/space'));
         }
 
         $title = Yii::$app->request->post('title', '');
@@ -60,7 +81,6 @@ class SpaceController extends ContentContainerController
         $videoChat = new InstantVideoChat();
         $videoChat->title = $title;
         $videoChat->description = $description;
-        $videoChat->created_by = Yii::$app->user->id;
         
         // Set content container
         if ($this->contentContainer instanceof \humhub\modules\space\models\Space) {
@@ -77,17 +97,29 @@ class SpaceController extends ContentContainerController
             // Send notification to space members
             $this->sendInstantChatNotification($videoChat);
             
-            return [
-                'success' => true,
-                'message' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat started successfully!'),
-                'joinUrl' => $videoChat->getJoinUrl(),
-                'wallEntry' => $videoChat->getWallOut()
-            ];
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = 'json';
+                return [
+                    'success' => true,
+                    'message' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat started successfully!'),
+                    'joinUrl' => $videoChat->getJoinUrl(),
+                    'wallEntry' => $videoChat->getWallOut()
+                ];
+            }
+            
+            Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat started successfully!'));
+            return $this->redirect($videoChat->getJoinUrl());
         } else {
-            return [
-                'error' => Yii::t('JitsiMeetCloud8x8Module.base', 'Failed to create video chat.'),
-                'errors' => $videoChat->getErrors()
-            ];
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = 'json';
+                return [
+                    'error' => Yii::t('JitsiMeetCloud8x8Module.base', 'Failed to create video chat.'),
+                    'errors' => $videoChat->getErrors()
+                ];
+            }
+            
+            Yii::$app->session->setFlash('error', Yii::t('JitsiMeetCloud8x8Module.base', 'Failed to create video chat.'));
+            return $this->redirect($this->contentContainer->createUrl('/space/space'));
         }
     }
 
