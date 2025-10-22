@@ -129,7 +129,6 @@ class SettingsForm extends Model
     public function attributeHints()
     {
         return [
-<<<<<<< HEAD
             'jitsiDomain' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default is meet.jit.si without "https://" prefix.'),
             'jitsiAppID' => Yii::t('JitsiMeetCloud8x8Module.base', 'Application ID shared with a private Jitsi server used to generate JWT token for authentication. Default: empty, no JWT token authentication will be used.'),
             'jitsiAppSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Application secret shared with a private Jitsi server used to sign JWT token for authentication. Default: empty, needed if JWT token should be generated.'),
@@ -147,14 +146,6 @@ class SettingsForm extends Model
             'defaultRecordingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable recording by default for users with permission.'),
             'defaultLivestreamingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable livestreaming by default for users with permission.'),
             'defaultModerationEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable moderation features by default.'),
-=======
-            'jitsiDomain' => Yii::t('JitsiMeetModule.base', 'Without "https://" prefix.'),
-            'jitsiAppID' => Yii::t('JitsiMeetModule.base', 'Application ID shared with a private Jitsi server used to generate JWT token for authentication. Default: empty, no JWT token authentication will be used.'),
-            'jitsiAppSecret' => Yii::t('JitsiMeetModule.base', 'Application secret shared with a private Jitsi server used to sign JWT token for authentication. Default: empty, needed if JWT token should be generated.'),
-            'menuTitle' => Yii::t('JitsiMeetModule.base', 'Default: Jitsi Meet'),
-            'roomPrefix' => Yii::t('JitsiMeetModule.base', 'Default: empty, useful for public Jitsi server'),
-            'enableJwt' => Yii::t('JitsiMeetModule.base', 'Enable JWT Authentication'),
->>>>>>> origin/master
         ];
     }
 
