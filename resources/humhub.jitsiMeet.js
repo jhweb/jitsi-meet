@@ -2,6 +2,7 @@ humhub.module('jitsiMeet', function (module, require, $) {
     var modal = require('ui.modal');
     var object = require('util').object;
     var Widget = require('ui.widget').Widget;
+    var client = require('client');
 
     var Room = function (node, options) {
         Widget.call(this, node, options);
@@ -124,8 +125,18 @@ humhub.module('jitsiMeet', function (module, require, $) {
         }
     }
 
+    // Space namespace for space-related actions
+    var Space = function() {};
+    
+    Space.prototype.quickPostModal = function(evt) {
+        modal.load(evt.$trigger.data('action-url'), function(html) {
+            modal.set(html);
+        });
+    };
+
     module.export({
         Room: Room,
+        Space: Space,
     });
 
 });
