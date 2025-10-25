@@ -56,6 +56,17 @@ class Form extends WallCreateContentForm
     /**
      * @inheritdoc
      */
+    public function getSubmitUrl()
+    {
+        if ($this->contentContainer) {
+            return $this->contentContainer->createUrl('/jitsi-meet-cloud-8x8/instant-video-chat/create');
+        }
+        return '#';
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function run()
     {
         $videoChat = new InstantVideoChat();

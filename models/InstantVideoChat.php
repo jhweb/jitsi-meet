@@ -105,6 +105,8 @@ class InstantVideoChat extends ContentActiveRecord
             if ($insert) {
                 $this->created_at = date('Y-m-d H:i:s');
                 $this->started_at = date('Y-m-d H:i:s');
+                $this->status = 'active';
+                $this->participant_count = 0;
                 
                 // Set created_by from content if available, otherwise use current user
                 if ($this->content && $this->content->created_by) {
@@ -113,7 +115,16 @@ class InstantVideoChat extends ContentActiveRecord
                     $this->created_by = Yii::$app->user->id;
                 }
                 
-                // Generate room name if title is empty
+                // Set space_id or user_id based on content container
+                if ($this->content && $this->content->container) {
+                    if ($this->content->container instanceof Space) {
+                        $this->space_id = $this->content->container->id;
+                    } elseif ($this->content->container instanceof User) {
+                        $this->user_id = $this->content->container->id;
+                    }
+                }
+                
+                // Generate room name if empty
                 if (empty($this->room_name)) {
                     $this->room_name = $this->generateRoomName();
                 }
@@ -132,18 +143,12 @@ class InstantVideoChat extends ContentActiveRecord
         parent::afterSave($insert, $changedAttributes);
         
         if ($insert) {
-            // Set the content container based on space_id or user_id
-            if ($this->space_id) {
-                $this->content->container = Space::findOne($this->space_id);
-            } elseif ($this->user_id) {
-                $this->content->container = User::findOne($this->user_id);
+            // The content container should already be set from the controller
+            // Just ensure visibility is set correctly
+            if ($this->content) {
+                $this->content->visibility = \humhub\modules\content\models\Content::VISIBILITY_PRIVATE;
+                $this->content->save();
             }
-            
-            // Set content properties
-            $this->content->visibility = \humhub\modules\content\models\Content::VISIBILITY_PRIVATE;
-            
-            // Save the content
-            $this->content->save();
         }
     }
 
@@ -252,6 +257,24 @@ class InstantVideoChat extends ContentActiveRecord
     }
 
     /**
+     * Get the end URL for this video chat
+     * @return string
+     */
+    public function getEndUrl()
+    {
+        return \yii\helpers\Url::to(['/jitsi-meet-cloud-8x8/space/end-chat', 'id' => $this->id]);
+    }
+
+    /**
+     * Get the delete URL for this video chat
+     * @return string
+     */
+    public function getDeleteUrl()
+    {
+        return \yii\helpers\Url::to(['/jitsi-meet-cloud-8x8/space/delete', 'id' => $this->id]);
+    }
+
+    /**
      * Get the display title for this video chat
      * @return string
      */
@@ -307,6 +330,16 @@ class InstantVideoChat extends ContentActiveRecord
     public function getWallEntryWidget()
     {
         return new \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat(['model' => $this]);
+    }
+
+    /**
+     * Get the wall entry HTML for this video chat
+     * @param array $params
+     * @return string
+     */
+    public function getWallOut($params = [])
+    {
+        return $this->getWallEntryWidget()->render();
     }
 
     /**

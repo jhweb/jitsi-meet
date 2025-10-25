@@ -60,6 +60,8 @@ class InstantVideoChatController extends ContentContainerController
         // Create new video chat model
         $videoChat = new InstantVideoChat();
         $videoChat->content->container = $this->contentContainer;
+        $videoChat->content->created_by = Yii::$app->user->id;
+        $videoChat->created_by = Yii::$app->user->id;
 
         // Load form data
         if ($videoChat->load(Yii::$app->request->post()) && $videoChat->save()) {
@@ -68,12 +70,7 @@ class InstantVideoChatController extends ContentContainerController
             
             if (Yii::$app->request->isAjax) {
                 Yii::$app->response->format = 'json';
-                return [
-                    'success' => true,
-                    'message' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat started successfully!'),
-                    'joinUrl' => $videoChat->getJoinUrl(),
-                    'wallEntry' => $videoChat->getWallOut()
-                ];
+                return \humhub\modules\stream\actions\StreamEntryResponse::getAsArray($videoChat->content);
             }
             
             Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat started successfully!'));

@@ -63,7 +63,7 @@ use yii\helpers\Html;
         <?php if ($model->canEnd()): ?>
             <button class="btn btn-warning end-chat-btn" 
                     data-chat-id="<?= $model->id ?>"
-                    data-action-click="jitsiMeet.endChat"
+                    data-action-click="jitsi-meet-cloud-8x8.Chat.endChat"
                     data-action-url="<?= $model->getEndUrl() ?>">
                 <i class="fa fa-stop"></i>
                 End Chat
@@ -73,7 +73,7 @@ use yii\helpers\Html;
         <?php if ($model->canDelete()): ?>
             <button class="btn btn-danger delete-chat-btn" 
                     data-chat-id="<?= $model->id ?>"
-                    data-action-click="jitsiMeet.deleteChat"
+                    data-action-click="jitsi-meet-cloud-8x8.Chat.deleteChat"
                     data-action-url="<?= $model->getDeleteUrl() ?>">
                 <i class="fa fa-trash"></i>
                 Delete

@@ -163,13 +163,18 @@ humhub.module('jitsi-meet-cloud-8x8', function (module, require, $) {
     };
 
     // Form submission handler for instant video chat creation
-    var Form = function() {};
-    
-    Form.prototype.submit = function(evt) {
+    var Form = {
+        submit: function(evt) {
         var $form = evt.$form || evt.$trigger.closest('form');
         var roomName = $form.find('input[name*="room_name"]').val();
         var title = $form.find('input[name*="title"]').val();
         var description = $form.find('textarea[name*="description"]').val();
+        
+        // Validate required fields
+        if (!roomName || roomName.trim() === '') {
+            status.error('Room name is required');
+            return;
+        }
         
         client.post(evt.$trigger.data('action-url'), {
             data: {
@@ -180,37 +185,96 @@ humhub.module('jitsi-meet-cloud-8x8', function (module, require, $) {
             success: function(response) {
                 if (response.success) {
                     status.success(response.message || 'Video chat created successfully');
-                    // Reload the page to show the new content
-                    window.location.reload();
+                    
+                    // Clear the form
+                    $form[0].reset();
+                    
+                    // Reload the stream to show the new content
+                    if (typeof humhub !== 'undefined' && humhub.modules && humhub.modules.stream) {
+                        humhub.modules.stream.reload();
+                    } else {
+                        window.location.reload();
+                    }
+                    
+                    // Optionally open the video chat in a new window
+                    if (response.joinUrl) {
+                        window.open(response.joinUrl, '_blank');
+                    }
                 } else {
                     status.error(response.error || 'Failed to create video chat');
+                    if (response.errors) {
+                        console.error('Validation errors:', response.errors);
+                    }
+                }
+            },
+            error: function(response) {
+                status.error('Failed to create video chat');
+                console.error('Error response:', response);
+            }
+        });
+        }
+    };
+
+    // End chat functionality
+    var Chat = {
+        endChat: function(evt) {
+        var chatId = evt.$trigger.data('chat-id');
+        
+        client.post(evt.$trigger.data('action-url'), {
+            data: { id: chatId },
+            success: function(response) {
+                if (response.success) {
+                    status.success(response.message || 'Video chat ended successfully');
+                    // Reload the stream to update the display
+                    if (typeof humhub !== 'undefined' && humhub.modules && humhub.modules.stream) {
+                        humhub.modules.stream.reload();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    status.error(response.error || 'Failed to end video chat');
                 }
             },
             error: function() {
-                status.error('Failed to create video chat');
+                status.error('Failed to end video chat');
             }
         });
+        },
+        
+        deleteChat: function(evt) {
+        var chatId = evt.$trigger.data('chat-id');
+        
+        if (!confirm('Are you sure you want to delete this video chat? This action cannot be undone.')) {
+            return;
+        }
+        
+        client.post(evt.$trigger.data('action-url'), {
+            data: { id: chatId },
+            success: function(response) {
+                if (response.success) {
+                    status.success(response.message || 'Video chat deleted successfully');
+                    // Reload the stream to remove the entry
+                    if (typeof humhub !== 'undefined' && humhub.modules && humhub.modules.stream) {
+                        humhub.modules.stream.reload();
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    status.error(response.error || 'Failed to delete video chat');
+                }
+            },
+            error: function() {
+                status.error('Failed to delete video chat');
+            }
+        });
+        }
     };
-    
-    // Auto-bind form submission for jitsi-meet-cloud-8x8 forms
-    $(document).on('click', '[data-content-component="jitsi-meet-cloud-8x8"] button[type="submit"]', function(e) {
-        e.preventDefault();
-        var $button = $(this);
-        var $form = $button.closest('form');
-        var $container = $form.closest('[data-content-component="jitsi-meet-cloud-8x8"]');
-        
-        // Set up the action attributes for the form handler
-        $button.attr('data-action-click', 'jitsi-meet-cloud-8x8.Form.submit');
-        $button.attr('data-action-url', $container.data('action-url') || '/jitsi-meet-cloud-8x8/instant-video-chat/create');
-        
-        // Trigger the form submission
-        $button.trigger('click');
-    });
 
     module.export({
         Room: Room,
         Space: Space,
         Form: Form,
+        Chat: Chat,
     });
 
 });
