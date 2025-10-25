@@ -64,12 +64,13 @@ class Events
 
     /**
      * Hook into space wall composer menu to add Quick Video Chat button
-     * This is now handled automatically by WallCreateContentMenu based on content classes
+     * DISABLED: Modal implementation has styling issues, using inline form instead
      * 
      * @param $event
      */
     public static function onWallCreateContentMenuInit($event)
     {
+        // DISABLED: Modal implementation has styling issues
         // This method is no longer needed as WallCreateContentMenu automatically
         // generates menu entries from content classes registered in Module::getContentClasses()
         // The InstantVideoChat content class and WallStreamEntryInstantVideoChat widget

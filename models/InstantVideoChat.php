@@ -60,7 +60,8 @@ class InstantVideoChat extends ContentActiveRecord
     public function rules()
     {
         return [
-            [['room_name', 'created_by'], 'required'],
+            [['created_by'], 'required'],
+            [['room_name'], 'required', 'on' => 'update'], // Only required on update, not creation
             [['description'], 'string'],
             [['created_by', 'space_id', 'user_id', 'participant_count'], 'integer'],
             [['started_at', 'ended_at', 'created_at', 'updated_at'], 'safe'],
@@ -104,7 +105,13 @@ class InstantVideoChat extends ContentActiveRecord
             if ($insert) {
                 $this->created_at = date('Y-m-d H:i:s');
                 $this->started_at = date('Y-m-d H:i:s');
-                $this->created_by = $this->content->created_by;
+                
+                // Set created_by from content if available, otherwise use current user
+                if ($this->content && $this->content->created_by) {
+                    $this->created_by = $this->content->created_by;
+                } elseif (Yii::$app->user && !Yii::$app->user->isGuest) {
+                    $this->created_by = Yii::$app->user->id;
+                }
                 
                 // Generate room name if title is empty
                 if (empty($this->room_name)) {
@@ -285,6 +292,15 @@ class InstantVideoChat extends ContentActiveRecord
     }
 
     /**
+     * Get the content icon for this video chat
+     * @return string
+     */
+    public function getContentIcon()
+    {
+        return 'video-camera';
+    }
+
+    /**
      * Get the wall entry widget for this video chat
      * @return \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat
      */
@@ -389,6 +405,49 @@ class InstantVideoChat extends ContentActiveRecord
         }
         
         return false;
+    }
+
+    /**
+     * Check if the current user can create video chats
+     * @param User|null $user
+     * @param ContentContainerActiveRecord|null $container
+     * @return bool
+     */
+    public static function canCreate($user = null, $container = null)
+    {
+        if ($user === null) {
+            $user = Yii::$app->user->identity;
+        }
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Check if user has CreateVideoChat permission in the container
+        if ($container) {
+            return $container->can(\humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat::class);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if the current user can edit this video chat
+     * @param User|null $user
+     * @return bool
+     */
+    public function canEdit($user = null)
+    {
+        if ($user === null) {
+            $user = Yii::$app->user->identity;
+        }
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Use the parent canEdit method from ContentActiveRecord
+        return parent::canEdit($user);
     }
 }
 
