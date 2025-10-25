@@ -3,6 +3,7 @@ humhub.module('jitsiMeet', function (module, require, $) {
     var object = require('util').object;
     var Widget = require('ui.widget').Widget;
     var client = require('client');
+    var status = require('ui.status');
 
     var Room = function (node, options) {
         Widget.call(this, node, options);
@@ -131,6 +132,33 @@ humhub.module('jitsiMeet', function (module, require, $) {
     Space.prototype.quickPostModal = function(evt) {
         modal.load(evt.$trigger.data('action-url'), function(html) {
             modal.set(html);
+        });
+    };
+
+    Space.prototype.quickPost = function(evt) {
+        var $form = evt.$form || evt.$trigger.closest('form');
+        var title = $form.find('#video-chat-title').val();
+        var description = $form.find('#video-chat-description').val();
+        
+        client.post(evt.$trigger.data('action-url'), {
+            data: {
+                title: title,
+                description: description
+            },
+            success: function(response) {
+                if (response.success) {
+                    modal.close();
+                    status.success(response.message);
+                    if (response.joinUrl) {
+                        window.location.href = response.joinUrl;
+                    }
+                } else {
+                    status.error(response.error || 'Failed to start video chat');
+                }
+            },
+            error: function() {
+                status.error('Failed to start video chat');
+            }
         });
     };
 

@@ -53,9 +53,10 @@ class SpaceController extends ContentContainerController
             throw new \yii\web\ForbiddenHttpException();
         }
 
-        return $this->renderAjaxPartial(\humhubContrib\modules\jitsiMeetCloud8x8\widgets\Form::widget([
+        return $this->renderAjax('create-form', [
+            'videoChat' => $videoChat,
             'contentContainer' => $this->contentContainer,
-        ]));
+        ]);
     }
 
     /**
@@ -218,6 +219,37 @@ class SpaceController extends ContentContainerController
         }
 
         return $result;
+    }
+
+    /**
+     * Delete a video chat permanently
+     * @param int $id
+     * @return array
+     */
+    public function actionDelete($id)
+    {
+        Yii::$app->response->format = 'json';
+
+        $videoChat = InstantVideoChat::findOne($id);
+        if (!$videoChat) {
+            return ['error' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat not found.')];
+        }
+
+        // Check permissions
+        if (!$videoChat->canDelete()) {
+            return ['error' => Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to delete this video chat.')];
+        }
+
+        if ($videoChat->delete()) {
+            return [
+                'success' => true,
+                'message' => Yii::t('JitsiMeetCloud8x8Module.base', 'Video chat deleted successfully.')
+            ];
+        } else {
+            return [
+                'error' => Yii::t('JitsiMeetCloud8x8Module.base', 'Failed to delete video chat.')
+            ];
+        }
     }
 }
 

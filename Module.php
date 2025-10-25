@@ -3,6 +3,7 @@
 namespace humhubContrib\modules\jitsiMeetCloud8x8;
 
 use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
+use humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets;
 use humhub\modules\content\components\ContentContainerActiveRecord;
 use humhub\modules\content\components\ContentContainerModule;
 use humhub\modules\space\models\Space;
@@ -15,6 +16,19 @@ class Module extends ContentContainerModule
     public $resourcesPath = 'resources';
 
     private $_settingsForm = null;
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        parent::init();
+        
+        // Register Asset Bundle globally for JavaScript actions
+        if (!Yii::$app->user->isGuest) {
+            Assets::register(Yii::$app->view);
+        }
+    }
 
     /**
      * @return SettingsForm

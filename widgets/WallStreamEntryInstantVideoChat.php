@@ -17,26 +17,28 @@ use humhubContrib\modules\jitsiMeetCloud8x8\models\InstantVideoChat;
 class WallStreamEntryInstantVideoChat extends WallStreamEntryWidget
 {
     /**
-     * Route to create a content
-     *
+     * Route to create a new video chat
      * @var string
      */
     public $createRoute = '/jitsi-meet-cloud-8x8/space/create-form';
 
     /**
-     * @inheritdoc
+     * Create mode - use modal for video chat creation
+     * @var string
      */
-    public $createMode = self::EDIT_MODE_INLINE;
+    public $createMode = WallStreamEntryWidget::EDIT_MODE_MODAL;
 
     /**
-     * @inheritdoc
+     * Sort order for the create form menu (lower numbers appear first)
+     * @var int
      */
-    public $createFormSortOrder = 100;
+    public $createFormSortOrder = 200;
 
     /**
-     * @inheritdoc
+     * Action for the create form menu
+     * @var string
      */
-    public $createFormClass = Form::class;
+    public $createFormMenuAction = 'ui.modal.load';
 
     /**
      * @inheritdoc

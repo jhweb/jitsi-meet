@@ -4,6 +4,7 @@ namespace humhubContrib\modules\jitsiMeetCloud8x8\widgets;
 
 use humhub\modules\content\components\ContentContainerActiveRecord;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets;
 use humhub\widgets\Button;
 use Yii;
 
@@ -47,7 +48,10 @@ class QuickVideoChatButton extends \humhub\widgets\BaseStack
             return '';
         }
 
-        return $this->render('quick-video-chat-button', [
+        // Register the Asset Bundle to load JavaScript
+        Assets::register($this->view);
+
+        return $this->render('@jitsi-meet-cloud-8x8/views/widgets/quick-video-chat-button', [
             'contentContainer' => $this->contentContainer
         ]);
     }

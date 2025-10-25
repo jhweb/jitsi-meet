@@ -4,6 +4,7 @@ use humhub\widgets\Button;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Html;
 use yii\helpers\Url;
+use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm */
 
@@ -63,16 +64,12 @@ $(document).ready(function () {
     }
 
     displayJwtParams();
-<<<<<<< HEAD
     displayJaas();
+    toggleJitsiDomainTextInput();
     $(document.body).on('change', '#settingsform-enablejwt', function(){ displayJwtParams(); });
     $(document.body).on('change', '#settingsform-mode', function(){ displayJaas(); });
-=======
-    toggleJitsiDomainTextInput();
-    $(document.body).on('change', '#settingsform-enablejwt', displayJwtParams);
     $(document.body).on('change', '#settingsform-jitsidomain', toggleJitsiDomainTextInput);
     $('#configure-form').on('submit', disabledJitsiDomainField);
->>>>>>> origin/master
 });
 JS;
 $this->registerJs($script);
@@ -80,34 +77,21 @@ $this->registerJs($script);
 
 <div class="panel panel-default">
 
-<<<<<<< HEAD
     <div class="panel-heading"><?= Yii::t('JitsiMeetCloud8x8Module.base', '<strong>Jitsi</strong> module configuration'); ?></div>
-=======
-    <div class="panel-heading"><?= Yii::t('JitsiMeetModule.base', '<strong>Jitsi</strong> module configuration') ?></div>
->>>>>>> origin/master
 
     <div class="panel-body">
         <?php $form = ActiveForm::begin(['id' => 'configure-form']) ?>
 
-<<<<<<< HEAD
         <?= $form->field($model, 'mode')->dropDownList(['self_hosted' => 'Self-Hosted Jitsi', 'jaas' => '8x8 JaaS (Cloud)']); ?>
 
-        <?= $form->field($model, 'jitsiDomain'); ?>
-        <?= $form->field($model, 'roomPrefix'); ?>
-        <?= $form->field($model, 'menuTitle'); ?>
-
-        <?= $form->field($model, 'enableJwt')->checkbox(); ?>
-        <?= $form->field($model, 'jitsiAppID'); ?>
-        <?= $form->field($model, 'jitsiAppSecret'); ?>
-=======
-        <?= $form->field($model, 'jitsiDomain')->dropDownList(SettingsForm::defaultJitsiDomainOptions(), ['prompt' => Yii::t('JitsiMeetModule.base', 'Custom domain')])->hint('') ?>
+        <?= $form->field($model, 'jitsiDomain')->dropDownList(SettingsForm::defaultJitsiDomainOptions(), ['prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain')])->hint('') ?>
         <?= $form->field($model, 'jitsiDomain')->textInput(['id' => 'settingsform-jitsidomain-text'])->label('') ?>
         <?= $form->field($model, 'roomPrefix') ?>
         <?= $form->field($model, 'menuTitle') ?>
+
         <?= $form->field($model, 'enableJwt')->checkbox() ?>
         <?= $form->field($model, 'jitsiAppID') ?>
         <?= $form->field($model, 'jitsiAppSecret') ?>
->>>>>>> origin/master
 
         <?= $form->field($model, 'jaasAppId'); ?>
         <?= $form->field($model, 'jaasKid'); ?>

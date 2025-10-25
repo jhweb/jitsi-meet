@@ -32,6 +32,16 @@ use Yii;
 class InstantVideoChat extends ContentActiveRecord
 {
     /**
+     * @var string The module ID
+     */
+    public $moduleId = 'jitsi-meet-cloud-8x8';
+    
+    /**
+     * @var string The stream channel (default for wall streams)
+     */
+    public $streamChannel = 'default';
+    
+    /**
      * @var string The wall entry widget class
      */
     public $wallEntryClass = 'humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat';
@@ -124,7 +134,6 @@ class InstantVideoChat extends ContentActiveRecord
             
             // Set content properties
             $this->content->visibility = \humhub\modules\content\models\Content::VISIBILITY_PRIVATE;
-            $this->content->stream_channel = 'default';
             
             // Save the content
             $this->content->save();
@@ -254,6 +263,19 @@ class InstantVideoChat extends ContentActiveRecord
     }
 
     /**
+     * Get the content description for this video chat
+     * @return string
+     */
+    public function getContentDescription()
+    {
+        $description = $this->title ?: $this->room_name;
+        if ($this->description) {
+            $description .= ' - ' . $this->description;
+        }
+        return $description;
+    }
+
+    /**
      * Get the icon for this video chat
      * @return string
      */
@@ -270,16 +292,6 @@ class InstantVideoChat extends ContentActiveRecord
     {
         return new \humhubContrib\modules\jitsiMeetCloud8x8\widgets\WallStreamEntryInstantVideoChat(['model' => $this]);
     }
-
-    /**
-     * Get the module ID for this content
-     * @return string
-     */
-    public function getModuleId()
-    {
-        return 'jitsi-meet-cloud-8x8';
-    }
-
 
     /**
      * Check if user can join this video chat
@@ -337,6 +349,43 @@ class InstantVideoChat extends ContentActiveRecord
                 $membership = $space->getMembership($user);
                 return $membership && ($membership->isAdmin() || $membership->isOwner());
             }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if user can delete this video chat
+     * @param User|null $user
+     * @return bool
+     */
+    public function canDelete($user = null)
+    {
+        if (!$user) {
+            $user = Yii::$app->user->getIdentity();
+        }
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Creator can always delete
+        if ($this->created_by === $user->id) {
+            return true;
+        }
+        
+        // Space admins can delete space chats
+        if ($this->space_id) {
+            $space = $this->space;
+            if ($space) {
+                $membership = $space->getMembership($user);
+                return $membership && ($membership->isAdmin() || $membership->isOwner());
+            }
+        }
+        
+        // Global admins can delete any chat
+        if ($user->isSystemAdmin()) {
+            return true;
         }
         
         return false;

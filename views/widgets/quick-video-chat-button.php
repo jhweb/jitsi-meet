@@ -21,7 +21,6 @@ use yii\helpers\Url;
 
 <?= Modal::widget([
     'id' => 'quick-video-chat-modal',
-    'size' => Modal::SIZE_MEDIUM,
     'header' => Yii::t('JitsiMeetCloud8x8Module.base', 'Start Video Chat'),
     'body' => $this->render('quick-video-chat-form', [
         'contentContainer' => $contentContainer

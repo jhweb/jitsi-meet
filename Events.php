@@ -8,6 +8,8 @@ use humhub\modules\content\widgets\WallCreateContentMenu;
 use humhub\modules\user\widgets\AccountMenu;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\widgets\QuickVideoChatButton;
+use humhub\models\ModuleEnabled;
 use Yii;
 
 class Events
@@ -16,6 +18,11 @@ class Events
     public static function onTopMenuInit($event)
     {
         if (Yii::$app->user->isGuest || !Yii::$app->user->can(CanAccess::class)) {
+            return;
+        }
+
+        // Check if our module is actually enabled before showing menu
+        if (!ModuleEnabled::findOne(['module_id' => 'jitsi-meet-cloud-8x8'])) {
             return;
         }
 
@@ -53,6 +60,20 @@ class Events
             'icon' => 'bell',
             'sortOrder' => 500,
         ]));
+    }
+
+    /**
+     * Hook into space wall composer menu to add Quick Video Chat button
+     * This is now handled automatically by WallCreateContentMenu based on content classes
+     * 
+     * @param $event
+     */
+    public static function onWallCreateContentMenuInit($event)
+    {
+        // This method is no longer needed as WallCreateContentMenu automatically
+        // generates menu entries from content classes registered in Module::getContentClasses()
+        // The InstantVideoChat content class and WallStreamEntryInstantVideoChat widget
+        // will automatically create the "Video Chat" tab in the content creation menu
     }
 
 }
