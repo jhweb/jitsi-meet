@@ -1,4 +1,4 @@
-humhub.module('jitsiMeet', function (module, require, $) {
+humhub.module('jitsi-meet-cloud-8x8', function (module, require, $) {
     var modal = require('ui.modal');
     var object = require('util').object;
     var Widget = require('ui.widget').Widget;
@@ -162,9 +162,55 @@ humhub.module('jitsiMeet', function (module, require, $) {
         });
     };
 
+    // Form submission handler for instant video chat creation
+    var Form = function() {};
+    
+    Form.prototype.submit = function(evt) {
+        var $form = evt.$form || evt.$trigger.closest('form');
+        var roomName = $form.find('input[name*="room_name"]').val();
+        var title = $form.find('input[name*="title"]').val();
+        var description = $form.find('textarea[name*="description"]').val();
+        
+        client.post(evt.$trigger.data('action-url'), {
+            data: {
+                'InstantVideoChat[room_name]': roomName,
+                'InstantVideoChat[title]': title,
+                'InstantVideoChat[description]': description
+            },
+            success: function(response) {
+                if (response.success) {
+                    status.success(response.message || 'Video chat created successfully');
+                    // Reload the page to show the new content
+                    window.location.reload();
+                } else {
+                    status.error(response.error || 'Failed to create video chat');
+                }
+            },
+            error: function() {
+                status.error('Failed to create video chat');
+            }
+        });
+    };
+    
+    // Auto-bind form submission for jitsi-meet-cloud-8x8 forms
+    $(document).on('click', '[data-content-component="jitsi-meet-cloud-8x8"] button[type="submit"]', function(e) {
+        e.preventDefault();
+        var $button = $(this);
+        var $form = $button.closest('form');
+        var $container = $form.closest('[data-content-component="jitsi-meet-cloud-8x8"]');
+        
+        // Set up the action attributes for the form handler
+        $button.attr('data-action-click', 'jitsi-meet-cloud-8x8.Form.submit');
+        $button.attr('data-action-url', $container.data('action-url') || '/jitsi-meet-cloud-8x8/instant-video-chat/create');
+        
+        // Trigger the form submission
+        $button.trigger('click');
+    });
+
     module.export({
         Room: Room,
         Space: Space,
+        Form: Form,
     });
 
 });

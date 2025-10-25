@@ -42,7 +42,7 @@ class Form extends WallCreateContentForm
      */
     public function renderForm(): string
     {
-        return $this->render('form', $this->getRenderParams());
+        return $this->render('@humhubContrib/modules/jitsiMeetCloud8x8/widgets/views/form', $this->getRenderParams());
     }
 
     /**
@@ -50,7 +50,7 @@ class Form extends WallCreateContentForm
      */
     public function renderActiveForm(ActiveForm $form): string
     {
-        return $this->render('form', $this->getRenderParams(['form' => $form]));
+        return $this->render('@humhubContrib/modules/jitsiMeetCloud8x8/widgets/views/form', $this->getRenderParams(['form' => $form]));
     }
 
     /**
