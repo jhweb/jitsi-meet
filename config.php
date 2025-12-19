@@ -16,7 +16,10 @@ return [
         ['class' => WallCreateContentMenu::class, 'event' => WallCreateContentMenu::EVENT_INIT, 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onWallCreateContentMenuInit']],
     ],
     'urlManagerRules' => [
-        '/conference/<name>' => 'jitsi-meet-cloud-8x8/room/open'
+        '/conference/<name>' => 'jitsi-meet-cloud-8x8/room/open',
+        // Handle old vpaas-magic-cookie URL format and redirect to new format
+        // Pattern: /vpaas-magic-cookie-{32-hex-chars}/{roomName}
+        '/vpaas-magic-cookie-<appId:[a-f0-9]{32}>/<name>' => 'jitsi-meet-cloud-8x8/room/redirect',
     ]
 ];
 ?>
