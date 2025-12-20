@@ -29,7 +29,7 @@ class JaasJwtService
 
         // Enhanced logging for debugging
         Yii::info('JaaS JWT Generation Started', 'jitsi-meet');
-        Yii::info("AppId: {$appId}, Kid: {$kid}, KeyPath: {$privateKeyPath}", 'jitsi-meet');
+        Yii::debug("AppId: {$appId}, Kid: {$kid}, KeyPath: {$privateKeyPath}", 'jitsi-meet');
 
         if (!$appId || !$kid || !$privateKeyPath) {
             Yii::error('JaaS JWT not generated: missing appId/kid/private key path.', 'jitsi-meet');
