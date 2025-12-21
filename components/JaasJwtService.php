@@ -28,8 +28,18 @@ class JaasJwtService
         $privateKeyPath = getenv('HUMHUB_JAAS_PRIVATE_KEY_PATH') ?: $settings->jaasPrivateKeyPath;
 
         // Enhanced logging for debugging
-        Yii::info('JaaS JWT Generation Started', 'jitsi-meet');
-        Yii::info("AppId: {$appId}, Kid: {$kid}, KeyPath: {$privateKeyPath}", 'jitsi-meet');
+        $isDebug = (bool)getenv('HUMHUB_JAAS_DEBUG');
+
+        if ($isDebug) {
+            Yii::info('JaaS JWT Generation Started', 'jitsi-meet');
+            Yii::info("AppId: {$appId}, Kid: {$kid}, KeyPath: {$privateKeyPath}", 'jitsi-meet');
+        } else {
+            $maskedAppId = empty($appId) ? 'Not Set' : (strlen($appId) > 8 ? substr($appId, 0, 4) . '...' . substr($appId, -4) : 'Set');
+            $maskedKid = empty($kid) ? 'Not Set' : (strlen($kid) > 8 ? substr($kid, 0, 4) . '...' . substr($kid, -4) : 'Set');
+            $keyPathStatus = empty($privateKeyPath) ? 'Not Set' : 'Set';
+            
+            Yii::info("JaaS JWT Generation Started [Masked]. AppId: {$maskedAppId}, Kid: {$maskedKid}, KeyPath: {$keyPathStatus}", 'jitsi-meet');
+        }
 
         if (!$appId || !$kid || !$privateKeyPath) {
             Yii::error('JaaS JWT not generated: missing appId/kid/private key path.', 'jitsi-meet');
@@ -37,13 +47,13 @@ class JaasJwtService
         }
 
         if (!is_readable($privateKeyPath)) {
-            Yii::error("JaaS JWT not generated: private key file not readable at {$privateKeyPath}", 'jitsi-meet');
+            Yii::error("JaaS JWT not generated: private key file not readable" . ($isDebug ? " at {$privateKeyPath}" : ""), 'jitsi-meet');
             return '';
         }
 
         $privateKey = @file_get_contents($privateKeyPath);
         if ($privateKey === false || trim($privateKey) === '') {
-            Yii::error("JaaS JWT not generated: failed reading private key from {$privateKeyPath}", 'jitsi-meet');
+            Yii::error("JaaS JWT not generated: failed reading private key" . ($isDebug ? " from {$privateKeyPath}" : ""), 'jitsi-meet');
             return '';
         }
 
@@ -106,9 +116,15 @@ class JaasJwtService
             'alg' => 'RS256',
         ];
 
-        // Log payload for debugging (always log for now to debug the auth issue)
-        Yii::info('JaaS JWT Payload: ' . json_encode($payload, JSON_PRETTY_PRINT), 'jitsi-meet');
-        Yii::info('JaaS JWT Headers: ' . json_encode($headers, JSON_PRETTY_PRINT), 'jitsi-meet');
+        // Log payload for debugging
+        if ($isDebug) {
+            $logPayload = $payload;
+            if (isset($logPayload['context']['user']['email'])) {
+                $logPayload['context']['user']['email'] = '[REDACTED]';
+            }
+            Yii::debug('JaaS JWT Payload: ' . json_encode($logPayload, JSON_PRETTY_PRINT), 'jitsi-meet');
+            Yii::debug('JaaS JWT Headers: ' . json_encode($headers, JSON_PRETTY_PRINT), 'jitsi-meet');
+        }
 
         try {
             $jwt = JWT::encode($payload, $privateKey, 'RS256', null, $headers);

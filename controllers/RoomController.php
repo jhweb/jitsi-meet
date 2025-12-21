@@ -181,7 +181,7 @@ class RoomController extends Controller
         Yii::info("RoomController::actionRedirect - Redirecting from old format (appId: {$appId}, room: {$name}) to new format", 'jitsi-meet');
         
         // Redirect to the new /conference/{name} format
-        return $this->redirect(['/conference/' . $name], 301); // 301 permanent redirect
+        return $this->redirect("/conference/{$name}", 301); // 301 permanent redirect
     }
 
     /**
@@ -192,6 +192,23 @@ class RoomController extends Controller
      */
     public function actionInvite()
     {
+        $settings = $this->module->getSettingsForm();
+        $mode = $settings->mode ?: 'self_hosted';
+
+        // Security check: JaaS mode requires login for guests
+        if ($mode === 'jaas') {
+            if (Yii::$app->user->isGuest) {
+                Yii::info('RoomController::actionInvite - User is guest in JaaS mode, requiring login', 'jitsi-meet');
+                Yii::$app->user->loginRequired();
+            }
+        } else {
+            // Self-hosted mode with JWT also requires login
+            if ($settings->enableJwt && Yii::$app->user->isGuest) {
+                Yii::info('RoomController::actionInvite - User is guest in secured self-hosted mode, requiring login', 'jitsi-meet');
+                Yii::$app->user->loginRequired();
+            }
+        }
+
         $request = Yii::$app->request;
         $method = $request->method;
         

@@ -1,7 +1,7 @@
 <?php
 
-use humhub\widgets\bootstrap\Button;
-use humhub\widgets\form\ActiveForm;
+use humhub\widgets\Button;
+use yii\bootstrap\ActiveForm;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
