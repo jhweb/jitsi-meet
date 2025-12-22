@@ -7,7 +7,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\widgets\RoomWidget;
 /* @var $name string */
 /* @var $startSilent bool */
 ?>
-<div class="modal-dialog animated fadeIn" style="width:96%">
+<div class="modal-dialog modal-dialog-large jitsi-modal-dialog animated fadeIn" style="width:96% !important; max-width:none !important;">
     <div class="modal-content jitsiModal" id="jitsiModal" style="background-color:transparent;">
         <?= RoomWidget::widget(['roomName' => $name, 'jwt' => $jwt, 'startSilent' => $startSilent ?? false]) ?>
     </div>

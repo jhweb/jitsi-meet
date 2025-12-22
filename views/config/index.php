@@ -111,6 +111,22 @@ $this->registerJs($script);
         <?= $form->field($model, 'defaultRecordingEnabled')->checkbox(); ?>
         <?= $form->field($model, 'defaultLivestreamingEnabled')->checkbox(); ?>
         <?= $form->field($model, 'defaultModerationEnabled')->checkbox(); ?>
+        <hr>
+        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Feature') ?></h4>
+        <?= $form->field($model, 'enableLiveStreamWidget')->checkbox(); ?>
+        <?= $form->field($model, 'liveStreamWidgetTitle'); ?>
+        <?= $form->field($model, 'liveStreamRoomName'); ?>
+
+        <div class="form-group">
+            <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>
+            <div class="input-group">
+                <input type="text" class="form-control" value="<?= Url::to(['/jitsi-meet-cloud-8x8/webhook'], true) ?>" readonly>
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value)">Copy</button>
+                </span>
+            </div>
+            <p class="help-block"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Configure this URL in your 8x8 JaaS Console under Webhooks to enable live stream tracking.') ?></p>
+        </div>
 
         <?= Button::save()->submit() ?>
         <?php ActiveForm::end() ?>

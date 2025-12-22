@@ -18,6 +18,10 @@ class Assets extends AssetBundle
         'position' => View::POS_BEGIN
     ];
 
+    public $css = [
+        'jitsi-meet.css'
+    ];
+
     public function init()
     {
         $this->initJitsiApiJs();

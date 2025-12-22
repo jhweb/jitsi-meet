@@ -7,6 +7,7 @@ use humhub\components\Controller;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm;
 use humhubContrib\modules\jitsiMeetCloud8x8\Module;
 use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
+use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use Yii;
 
@@ -34,7 +35,9 @@ class RoomController extends Controller
 
         return $this->render('index', [
             'model' => $model,
-            'jitsiDomain' => $this->module->getSettingsForm()->jitsiDomain
+            'jitsiDomain' => $this->module->getSettingsForm()->jitsiDomain,
+            'activeStreams' => JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_LIVE])->orderBy(['start_time' => SORT_DESC])->all(),
+            'endedStreams' => JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED])->orderBy(['end_time' => SORT_DESC])->limit(10)->all()
         ]);
     }
 

@@ -37,6 +37,11 @@ class SettingsForm extends Model
     public $defaultLivestreamingEnabled;
     public $defaultModerationEnabled;
 
+    // Live Stream Widget settings
+    public $enableLiveStreamWidget;
+    public $liveStreamWidgetTitle;
+    public $liveStreamRoomName;
+
 
     /**
      * @inheritdoc
@@ -56,6 +61,8 @@ class SettingsForm extends Model
             [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath', 'jaasDomain'], 'string'],
             [['jaasEnableRecording', 'jaasEnableLivestreaming', 'jaasEnableModeration'], 'boolean'],
             [['defaultRecordingEnabled', 'defaultLivestreamingEnabled', 'defaultModerationEnabled'], 'boolean'],
+            [['enableLiveStreamWidget'], 'boolean'],
+            [['liveStreamWidgetTitle', 'liveStreamRoomName'], 'string'],
             
             // JaaS mode validation
             [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath'], 'required', 'when' => function($model) {
@@ -146,6 +153,9 @@ class SettingsForm extends Model
             'defaultRecordingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable recording by default for users with permission.'),
             'defaultLivestreamingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable livestreaming by default for users with permission.'),
             'defaultModerationEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable moderation features by default.'),
+            'enableLiveStreamWidget' => Yii::t('JitsiMeetCloud8x8Module.base', 'Show a live stream widget in the dashboard sidebar.'),
+            'liveStreamWidgetTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Title of the live stream widget.'),
+            'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
         ];
     }
 
@@ -218,6 +228,10 @@ class SettingsForm extends Model
         $this->defaultRecordingEnabled = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('defaultRecordingEnabled', 0);
         $this->defaultLivestreamingEnabled = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('defaultLivestreamingEnabled', 0);
         $this->defaultModerationEnabled = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('defaultModerationEnabled', 1);
+
+        $this->enableLiveStreamWidget = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableLiveStreamWidget', 0);
+        $this->liveStreamWidgetTitle = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamWidgetTitle', 'The Oil Press Broadcast Room');
+        $this->liveStreamRoomName = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamRoomName', 'Broadcast');
     }
 
     /**
@@ -245,6 +259,10 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('defaultRecordingEnabled', (int)$this->defaultRecordingEnabled);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('defaultLivestreamingEnabled', (int)$this->defaultLivestreamingEnabled);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('defaultModerationEnabled', (int)$this->defaultModerationEnabled);
+
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableLiveStreamWidget', (int)$this->enableLiveStreamWidget);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamWidgetTitle', $this->liveStreamWidgetTitle);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
 
         $this->roomPrefix = ucwords(preg_replace("/[^A-Za-z0-9]/", '', $this->roomPrefix));
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('roomPrefix', $this->roomPrefix);

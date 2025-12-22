@@ -13,6 +13,7 @@ return [
     ],
     'urlManagerRules' => [
         '/conference/<name>' => 'jitsi-meet-cloud-8x8/room/open',
+        'jitsi-meet-cloud-8x8/webhook' => 'jitsi-meet-cloud-8x8/webhook/index',
         // Handle old vpaas-magic-cookie URL format and redirect to new format
         // Pattern: /vpaas-magic-cookie-{32-hex-chars}/{roomName}
         '/vpaas-magic-cookie-<appId:[a-f0-9]{32}>/<name>' => 'jitsi-meet-cloud-8x8/room/redirect',
