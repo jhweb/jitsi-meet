@@ -1,0 +1,49 @@
+/* Jitsi Meet Modal Overrides for HumHub 1.18+ */
+
+/* Main modal dialog sizing - override HumHub defaults */
+.jitsi-modal-dialog {
+    width: 96% !important;
+    max-width: none !important;
+    margin: 10px auto !important;
+}
+
+/* Modal content container */
+.jitsiModal {
+    background-color: transparent !important;
+    min-height: 80vh !important;
+}
+
+/* Jitsi video container */
+#jitsiModal #jitsiMeetD,
+.jitsiModal #jitsiMeetD {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 70vh !important;
+}
+
+/* Ensure modal is not constrained by mobile breakpoints */
+@media screen and (min-width: 769px) {
+    .jitsi-modal-dialog {
+        width: 96% !important;
+        max-width: none !important;
+    }
+    
+    .jitsiModal {
+        min-height: 80vh !important;
+    }
+}
+
+/* Handle HumHub's modal class targeting */
+.modal.jitsiMeet-modal .modal-dialog,
+#jitsiMeet-modal .modal-dialog {
+    width: 96% !important;
+    max-width: none !important;
+}
+
+/* Ensure iframe fills container */
+#jitsiMeetD iframe {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 70vh !important;
+    border: none;
+}
