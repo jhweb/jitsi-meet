@@ -18,11 +18,32 @@ class WebhookController extends Controller
     /**
      * @inheritdoc
      */
+    /**
+     * @inheritdoc
+     */
     protected function getAccessRules()
     {
         return [
             ['actions' => ['index'], 'users' => ['*']]
         ];
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function beforeAction($action)
+    {
+        if ($action->id === 'index') {
+            // Disable CSRF for webhook
+            $this->enableCsrfValidation = false;
+        }
+
+        // Bypass parent beforeAction for index to avoid potential auth redirects
+        if ($action->id === 'index') {
+            return true; 
+        }
+
+        return parent::beforeAction($action);
     }
 
     /**
