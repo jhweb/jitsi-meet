@@ -46,6 +46,8 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         <?php endif; ?>
                         <br>
                         Started: <?= Yii::$app->formatter->asTime($stream->start_time) ?>
+                        <br>
+                        Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
                     
                     <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" class="btn btn-default btn-stream-live" target="_blank">
@@ -67,7 +69,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     
                     <?php if (!empty($stream->recording_url)): ?>
                         <a href="<?= Html::encode($stream->recording_url) ?>" class="btn btn-default btn-stream-replay" target="_blank">
-                            WATCH REPLAY
+                            WATCH / DOWNLOAD REPLAY
                         </a>
                     <?php else: ?>
                         <button class="btn btn-default btn-stream-replay" disabled>

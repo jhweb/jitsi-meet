@@ -87,6 +87,12 @@ class WebhookController extends Controller
             case 'LIVE_STREAM_ENDED':
                  // $this->handleLiveStreamEnded($roomName, $payload);
                  break;
+            case 'PARTICIPANT_JOINED':
+                $this->handleParticipantJoined($roomName, $payload);
+                break;
+            case 'PARTICIPANT_LEFT':
+                $this->handleParticipantLeft($roomName, $payload);
+                break;
         }
 
         return ['status' => 'success'];
@@ -177,6 +183,42 @@ class WebhookController extends Controller
         if ($stream) {
             $stream->recording_url = $recordingLink;
             $stream->save();
+        }
+    }
+
+    private function handleParticipantJoined($roomName, $payload)
+    {
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = null;
+
+        if ($sessionId) {
+            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
+        }
+
+        if (!$stream) {
+             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
+        }
+
+        if ($stream) {
+            $stream->updateCounters(['participant_count' => 1]);
+        }
+    }
+
+    private function handleParticipantLeft($roomName, $payload)
+    {
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = null;
+
+        if ($sessionId) {
+            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
+        }
+
+        if (!$stream) {
+             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
+        }
+
+        if ($stream && $stream->participant_count > 0) {
+            $stream->updateCounters(['participant_count' => -1]);
         }
     }
 }
