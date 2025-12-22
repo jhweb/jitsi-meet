@@ -18,7 +18,12 @@ class WebhookController extends Controller
     /**
      * @inheritdoc
      */
-    protected $access = Controller::ACCESS_PUBLIC;
+    protected function getAccessRules()
+    {
+        return [
+            ['actions' => ['index'], 'users' => ['*']]
+        ];
+    }
 
     /**
      * Handle incoming webhooks from 8x8 JaaS
@@ -44,11 +49,9 @@ class WebhookController extends Controller
         Yii::info("Jitsi Webhook received: $eventType for room: $roomName", 'jitsi-meet-cloud-8x8');
 
         switch ($eventType) {
-            case 'LIVE_STREAM_STARTED':
-                $this->handleLiveStreamStarted($roomName, $payload);
-                break;
-            case 'LIVE_STREAM_ENDED':
-                $this->handleLiveStreamEnded($roomName, $payload);
+            case 'ROOM_CREATED':
+                // Treat room creation as the start of a "live stream" session
+                $this->handleRoomCreated($roomName, $payload);
                 break;
             case 'ROOM_DESTROYED':
                 $this->handleRoomDestroyed($roomName, $payload);
@@ -56,23 +59,30 @@ class WebhookController extends Controller
             case 'RECORDING_UPLOADED':
                 $this->handleRecordingUploaded($roomName, $payload);
                 break;
+            case 'LIVE_STREAM_STARTED':
+                // Optional: You could allow dual triggers, but usually ROOM_CREATED is the master event for "meeting started"
+                // $this->handleLiveStreamStarted($roomName, $payload); 
+                break;
+            case 'LIVE_STREAM_ENDED':
+                 // $this->handleLiveStreamEnded($roomName, $payload);
+                 break;
         }
 
         return ['status' => 'success'];
     }
 
-    private function handleLiveStreamStarted($roomName, $payload)
+    private function handleRoomCreated($roomName, $payload)
     {
         $sessionId = $payload['sessionId'] ?? null;
         
-        // Try to find by session ID first, then room name (if active)
+        // Try to find by session ID first
         $stream = null;
         if ($sessionId) {
             $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
         }
         
         if (!$stream) {
-            // Check for an existing active stream for this room to update, or create new
+            // Check for an existing active stream for this room to avoid duplicates
             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
         }
         
@@ -98,26 +108,6 @@ class WebhookController extends Controller
         $stream->save();
     }
 
-    private function handleLiveStreamEnded($roomName, $payload)
-    {
-        $sessionId = $payload['sessionId'] ?? null;
-        $stream = null;
-        
-        if ($sessionId) {
-            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
-        }
-        
-        // Fallback to finding active stream by name
-        if (!$stream) {
-             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
-        }
-
-        if ($stream) {
-            $stream->status = JitsiLiveStream::STATUS_ENDED;
-            $stream->end_time = date('Y-m-d H:i:s', $payload['timestamp'] / 1000);
-            $stream->save();
-        }
-    }
 
     private function handleRoomDestroyed($roomName, $payload)
     {
