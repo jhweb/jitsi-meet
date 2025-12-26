@@ -54,20 +54,25 @@ class WebhookController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $rawBody = Yii::$app->request->getRawBody();
+        // Force log raw body to ensure we see what we get
+        Yii::error("Jitsi Webhook RAW BODY: " . $rawBody, 'jitsi-meet-cloud-8x8');
+        
         $payload = json_decode($rawBody, true);
 
         if (!$payload || !isset($payload['eventType'])) {
+            Yii::error("Jitsi Webhook: Invalid payload or missing eventType", 'jitsi-meet-cloud-8x8');
             return ['status' => 'error', 'message' => 'Invalid payload'];
         }
 
-        $eventType = $payload['eventType'];
+        // Fix: content might be case sensitive or mixed
+        $eventType = strtoupper($payload['eventType']);
         $fqn = $payload['fqn'] ?? '';
         
         // Extract room name from FQN (AppID/RoomName)
         $parts = explode('/', $fqn);
         $roomName = end($parts);
         
-        Yii::info("Jitsi Webhook received: $eventType for room: $roomName", 'jitsi-meet-cloud-8x8');
+        Yii::error("Jitsi Webhook Processing: Type=[$eventType] Room=[$roomName]", 'jitsi-meet-cloud-8x8');
 
         switch ($eventType) {
             case 'ROOM_CREATED':
@@ -87,11 +92,18 @@ class WebhookController extends Controller
             case 'LIVE_STREAM_ENDED':
                  // $this->handleLiveStreamEnded($roomName, $payload);
                  break;
+            case 'RECORDING_ENDED':
+                 // Log event but do nothing else for now
+                 Yii::info("Jitsi Webhook: RECORDING_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
+                 break;
             case 'PARTICIPANT_JOINED':
                 $this->handleParticipantJoined($roomName, $payload);
                 break;
             case 'PARTICIPANT_LEFT':
                 $this->handleParticipantLeft($roomName, $payload);
+                break;
+            default:
+                Yii::error("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
         }
 
@@ -126,13 +138,49 @@ class WebhookController extends Controller
         // Try to identify creator from cache
         $cache = Yii::$app->cache;
         if ($cache !== null) {
-            $creatorId = $cache->get('jitsiMeetCloud8x8:roomCreator:' . $roomName);
+            // FIX: lowercase room name for key
+            $creatorId = $cache->get('jitsiMeetCloud8x8:roomCreator:' . strtolower($roomName));
             if ($creatorId) {
                 $stream->creator_id = $creatorId;
+                
+                // Initialize participant count with creator
+                if ($stream->isNewRecord || $stream->participant_count == 0) {
+                     $stream->participant_count = 1;
+                     
+                     // Pre-fill dedup cache so we don't double count when PARTICIPANT_JOINED arrives for creator
+                     // We need the stream ID, but we might not have it if new record.
+                     // Saving first will generate ID.
+                }
             }
         }
         
-        $stream->save();
+        // Ensure Session ID is saved even if record existed
+        if ($sessionId && $stream->session_id !== $sessionId) {
+            $stream->session_id = $sessionId;
+        }
+        
+        if (!$stream->save()) {
+            Yii::error("JitsiLiveStream (ROOM_CREATED) Save Failed: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+        } else {
+            // Updated: If we have a creator, ensure they are counted and cached effectively immediately
+            if (!empty($stream->creator_id)) {
+                 $cacheKey = 'jitsiMeetCloud8x8:participants:' . $stream->id;
+                 $participants = Yii::$app->cache->get($cacheKey);
+                 if (!is_array($participants)) {
+                     $participants = [];
+                 }
+                 // We don't have the 8x8 ID for the creator here, only our internal User ID.
+                 // However, handleParticipantJoined uses the 8x8 'id' (from JWT or random).
+                 // IF the creator joins, 8x8 sends a specific ID. We don't know it yet.
+                 // SO: We simply set count to 1. But when they join, they might be counted again?
+                 // CORRECT APPROACH: Rely on handleParticipantJoined for accuracy, OR
+                 // if we want to force "1", we accept risk of "2" if they join?
+                 // User wants "count must include creator".
+                 // Best effort: Set to 1. If real event comes, it might go to 2.
+                 // Ideally, we want to map internal ID to 8x8 ID, but we can't here.
+                 // COMPROMISE: We set count to 1.
+            }
+        }
     }
 
 
@@ -158,6 +206,8 @@ class WebhookController extends Controller
 
     private function handleRecordingUploaded($roomName, $payload)
     {
+        Yii::error("Jitsi Webhook: RECORDING_UPLOADED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
+
         $sessionId = $payload['sessionId'] ?? null;
         $data = $payload['data'] ?? [];
         $recordingLink = $data['preAuthenticatedLink'] ?? null;
@@ -174,51 +224,99 @@ class WebhookController extends Controller
 
         // Fallback: find most recent ended stream for this room
         if (!$stream) {
+             // Try case-insensitive lookup if possible, or exact match
              $stream = JitsiLiveStream::find()
                 ->where(['room_name' => $roomName])
                 ->orderBy(['created_at' => SORT_DESC])
                 ->one();
+             
+             if (!$stream) {
+                 // FAILSAFE: Try searching by lowercase room name if exact match fails
+                 $stream = JitsiLiveStream::find()
+                    ->where(['lower(room_name)' => strtolower($roomName)])
+                    ->orderBy(['created_at' => SORT_DESC])
+                    ->one();
+             }
+
+             if (!$stream) {
+                 Yii::error("Jitsi Webhook: Could not find stream for RECORDING_UPLOADED. Room: $roomName, Session: $sessionId", 'jitsi-meet-cloud-8x8');
+                 return;
+             }
         }
 
         if ($stream) {
             $stream->recording_url = $recordingLink;
-            $stream->save();
+            
+            // FIX: Update participant count from recording metadata if available
+            $participants = $data['participants'] ?? [];
+            if (is_array($participants) && count($participants) > 0) {
+                $count = count($participants);
+                if ($count > $stream->participant_count) {
+                    $stream->participant_count = $count;
+                    Yii::info("Jitsi Webhook: Updated participant count from recording to $count", 'jitsi-meet-cloud-8x8');
+                }
+            }
+
+            if (!$stream->save()) {
+                Yii::error("JitsiLiveStream (RECORDING_UPLOADED) Save Failed: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            } else {
+                Yii::info("JitsiLiveStream Updated: RecURL=" . (empty($stream->recording_url) ? 'NO' : 'YES') . " (Len: " . strlen($stream->recording_url??'') . ") Count={$stream->participant_count}", 'jitsi-meet-cloud-8x8');
+            }
         }
     }
 
     private function handleParticipantJoined($roomName, $payload)
     {
-        $sessionId = $payload['sessionId'] ?? null;
-        $stream = null;
+        Yii::error("Jitsi Webhook: PARTICIPANT_JOINED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
 
+        $sessionId = $payload['sessionId'] ?? null;
+        $participantId = $payload['data']['participantId'] ?? $payload['participantId'] ?? null;
+        
+        $stream = null;
         if ($sessionId) {
             $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
         }
-
         if (!$stream) {
-             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
+            $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
         }
 
-        if ($stream) {
-            $stream->updateCounters(['participant_count' => 1]);
+        if ($stream && $participantId) {
+            // Deduplication logic using cache
+            $cacheKey = 'jitsiMeetCloud8x8:participants:' . $stream->id;
+            $participants = Yii::$app->cache->get($cacheKey);
+            if (!is_array($participants)) {
+                $participants = [];
+            }
+
+            if (!in_array($participantId, $participants)) {
+                $participants[] = $participantId;
+                Yii::$app->cache->set($cacheKey, $participants, 86400); // 1 day retention
+                
+                // Fix: Check if this is likely the creator (first joiner) and we already have count=1 from Room Created
+                $increment = 1;
+                if (count($participants) === 1 && $stream->participant_count == 1) {
+                     $increment = 0;
+                     Yii::info("Jitsi Webhook: First participant join detected. Skipping increment to avoid double-counting creator. Room: $roomName", 'jitsi-meet-cloud-8x8');
+                }
+
+                if ($increment > 0) {
+                    $stream->updateCounters(['participant_count' => 1]);
+                    Yii::info("Jitsi Webhook: Count incremented for room $roomName. New ID: $participantId", 'jitsi-meet-cloud-8x8');
+                }
+            } else {
+                 Yii::info("Jitsi Webhook: Participant $participantId already counted for room $roomName", 'jitsi-meet-cloud-8x8');
+            }
+        } elseif ($stream) {
+             // Fallback if no ID found, but we want to avoid overcounting on refresh.
+             // Without ID, we can't dedup. Better to log warning and NOT increment to avoid showing "100 participants" for 1 user refreshing.
+             Yii::warning("Jitsi Webhook: PARTICIPANT_JOINED without valid participantId for $roomName", 'jitsi-meet-cloud-8x8');
         }
     }
 
     private function handleParticipantLeft($roomName, $payload)
     {
-        $sessionId = $payload['sessionId'] ?? null;
-        $stream = null;
-
-        if ($sessionId) {
-            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
-        }
-
-        if (!$stream) {
-             $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
-        }
-
-        if ($stream && $stream->participant_count > 0) {
-            $stream->updateCounters(['participant_count' => -1]);
-        }
+        // We do NOT decrement for "Total Users Participated"
+        // Just log the event
+        Yii::info("Jitsi Webhook: PARTICIPANT_LEFT for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
     }
 }

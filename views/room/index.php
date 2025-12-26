@@ -47,7 +47,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         <br>
                         Started: <?= Yii::$app->formatter->asTime($stream->start_time) ?>
                         <br>
-                        Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
+                        Connected Users: <?= $stream->active_count > 0 ? $stream->active_count : 0 ?>
                     </div>
                     
                     <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" class="btn btn-default btn-stream-live" target="_blank">
@@ -61,20 +61,26 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     <div class="stream-badge">ENDED LIVE</div>
                     
                     <div class="stream-title"><?= Html::encode($stream->room_name) ?></div>
+                    <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
+                        <?php if ($stream->creator): ?>
+                            <?= Html::encode($stream->creator->displayName) ?>
+                        <?php else: ?>
+                            The Oil Press
+                        <?php endif; ?>
+                    </div>
+
                     <div class="stream-info">
-                        Ended: <?= Yii::$app->formatter->asDate($stream->end_time, 'medium') ?>
+                        Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
                         <br>
                         Duration: <?= $stream->getDuration() ?>
+                        <br>
+                        Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
                     
                     <?php if (!empty($stream->recording_url)): ?>
                         <a href="<?= Html::encode($stream->recording_url) ?>" class="btn btn-default btn-stream-replay" target="_blank">
                             WATCH / DOWNLOAD REPLAY
                         </a>
-                    <?php else: ?>
-                        <button class="btn btn-default btn-stream-replay" disabled>
-                            WATCH REPLAY <small>(Coming Soon)</small>
-                        </button>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
