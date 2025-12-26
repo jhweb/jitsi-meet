@@ -146,6 +146,7 @@ class WebhookController extends Controller
                 // Initialize participant count with creator
                 if ($stream->isNewRecord || $stream->participant_count == 0) {
                      $stream->participant_count = 1;
+                     $stream->active_count = 1;
                      
                      // Pre-fill dedup cache so we don't double count when PARTICIPANT_JOINED arrives for creator
                      // We need the stream ID, but we might not have it if new record.
@@ -199,6 +200,7 @@ class WebhookController extends Controller
 
         if ($stream && $stream->status == JitsiLiveStream::STATUS_LIVE) {
             $stream->status = JitsiLiveStream::STATUS_ENDED;
+            $stream->active_count = 0; // Reset active count when room destroyed
             $stream->end_time = date('Y-m-d H:i:s', $payload['timestamp'] / 1000);
             $stream->save();
         }
@@ -287,9 +289,25 @@ class WebhookController extends Controller
             if (!is_array($participants)) {
                 $participants = [];
             }
+            
+            // Deduplication Key Preference:
+            // 1. HumHub User ID (Stable across refreshes/rejoins)
+            // 2. Email (Stable if guest provides same email)
+            // 3. Participant ID (Changes on every refresh - least preferred)
+            $dedupKey = $participantId; // Default fallback
+            if (!empty($payload['data']['id'])) {
+                $dedupKey = 'user_' . $payload['data']['id'];
+            } elseif (!empty($payload['data']['email'])) {
+                $dedupKey = 'email_' . $payload['data']['email'];
+            }
+            
+            // LOGIC FOR ACTIVE COUNT (Always increment on join)
+            Yii::info("Jitsi Webhook: Attempting to increment active_count for stream ID {$stream->id}", 'jitsi-meet-cloud-8x8');
+            $stream->updateCounters(['active_count' => 1]);
+            Yii::info("Jitsi Webhook: Active count incremented for room $roomName. New ID: $participantId. DedupKey: $dedupKey", 'jitsi-meet-cloud-8x8');
 
-            if (!in_array($participantId, $participants)) {
-                $participants[] = $participantId;
+            if (!in_array($dedupKey, $participants)) {
+                $participants[] = $dedupKey;
                 Yii::$app->cache->set($cacheKey, $participants, 86400); // 1 day retention
                 
                 // Fix: Check if this is likely the creator (first joiner) and we already have count=1 from Room Created
@@ -315,8 +333,24 @@ class WebhookController extends Controller
 
     private function handleParticipantLeft($roomName, $payload)
     {
-        // We do NOT decrement for "Total Users Participated"
-        // Just log the event
         Yii::info("Jitsi Webhook: PARTICIPANT_LEFT for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
+        
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = null;
+        if ($sessionId) {
+            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
+        }
+        if (!$stream) {
+            $stream = JitsiLiveStream::findOne(['room_name' => $roomName, 'status' => JitsiLiveStream::STATUS_LIVE]);
+        }
+        
+        if ($stream) {
+            // Decrement ACTIVE count
+            // Ensure we don't go below 0
+            if ($stream->active_count > 0) {
+                 $stream->updateCounters(['active_count' => -1]);
+                 Yii::info("Jitsi Webhook: Active count decremented for room $roomName", 'jitsi-meet-cloud-8x8');
+            }
+        }
     }
 }
