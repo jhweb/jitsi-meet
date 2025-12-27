@@ -4,6 +4,7 @@ use humhub\libs\Html;
 use humhub\widgets\Button;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
+use yii\widgets\LinkPager;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm */
 /* @var $activeStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
@@ -84,6 +85,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
+
                 
                 <!-- Placeholders to fill grid if few items (Optional, based on screenshot) -->
                 <?php for($i=0; $i < max(0, 4 - count($activeStreams) - count($endedStreams)); $i++): ?>
@@ -91,6 +93,14 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                  </div>
                 <?php endfor; ?>
 
+            </div>
+            
+            <div class="pagination-container" style="text-align: center; width: 100%;">
+                <?= LinkPager::widget([
+                    'pagination' => $pages,
+                    'options' => ['class' => 'pagination', 'style' => 'display: inline-block;'],
+                    'maxButtonCount' => 5,
+                ]); ?>
             </div>
         </div>
         

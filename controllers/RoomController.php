@@ -33,11 +33,20 @@ class RoomController extends Controller
             return $this->redirect(['open', 'name' => $this->fixRoomName($model->room)]);
         }
 
+        $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;
+        $query = JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED]);
+        $countQuery = clone $query;
+        $pages = new \yii\data\Pagination(['totalCount' => $countQuery->count(), 'pageSize' => $entriesPerPage]);
+        
         return $this->render('index', [
             'model' => $model,
             'jitsiDomain' => $this->module->getSettingsForm()->jitsiDomain,
             'activeStreams' => JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_LIVE])->orderBy(['start_time' => SORT_DESC])->all(),
-            'endedStreams' => JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED])->orderBy(['end_time' => SORT_DESC])->limit(10)->all()
+            'endedStreams' => $query->offset($pages->offset)
+                ->limit($pages->limit)
+                ->orderBy(['end_time' => SORT_DESC])
+                ->all(),
+            'pages' => $pages
         ]);
     }
 
@@ -77,6 +86,10 @@ class RoomController extends Controller
             }
             
             $user = Yii::$app->user->getIdentity();
+            
+            // Fix: Ensure creator is set in cache regardless of admin status
+            $this->ensureRoomCreator($name, $user);
+            
             $isModerator = $this->isModeratorForCurrentContext($name);
             
             Yii::info("RoomController::actionOpen - User: {$user->displayName} (ID: {$user->id}), Moderator: " . ($isModerator ? 'true' : 'false'), 'jitsi-meet');
@@ -309,6 +322,27 @@ class RoomController extends Controller
         ]);
     }
 
+    private function ensureRoomCreator($roomName, $user)
+    {
+        if (empty($roomName) || !$user) {
+            return;
+        }
+
+        $cache = Yii::$app->cache;
+        if ($cache) {
+            // FIX: Normalize room name to lowercase for cache key to match Webhooks
+            $cacheKey = 'jitsiMeetCloud8x8:roomCreator:' . strtolower($roomName);
+            $creatorId = $cache->get($cacheKey);
+
+            if ($creatorId === false) {
+                // No creator yet -> set current user
+                // TTL 1 hour (matches isModeratorForCurrentContext logic)
+                $cache->set($cacheKey, $user->id, 3600);
+                Yii::info("ensureRoomCreator: Set user {$user->id} as creator for room '{$roomName}' (key: $cacheKey)", 'jitsi-meet');
+            }
+        }
+    }
+    
     private function fixRoomName($name)
     {
 

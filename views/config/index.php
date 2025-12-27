@@ -116,6 +116,7 @@ $this->registerJs($script);
         <?= $form->field($model, 'enableLiveStreamWidget')->checkbox(); ?>
         <?= $form->field($model, 'liveStreamWidgetTitle'); ?>
         <?= $form->field($model, 'liveStreamRoomName'); ?>
+        <?= $form->field($model, 'entriesPerPage')->textInput(['type' => 'number', 'min' => 1]); ?>
 
         <div class="form-group">
             <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>
