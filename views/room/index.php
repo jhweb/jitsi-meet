@@ -78,7 +78,17 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
                     
-                    <?php if (!empty($stream->recording_url)): ?>
+                <?php 
+                    $isExpired = false;
+                    if (!empty($stream->end_time)) {
+                        $secondsSinceEnd = time() - strtotime($stream->end_time);
+                        if ($secondsSinceEnd > (24 * 60 * 60)) {
+                            $isExpired = true;
+                        }
+                    }
+                    ?>
+                    
+                    <?php if (!empty($stream->recording_url) && !$isExpired): ?>
                         <a href="<?= Html::encode($stream->recording_url) ?>" class="btn btn-default btn-stream-replay" target="_blank">
                             WATCH / DOWNLOAD REPLAY
                         </a>
