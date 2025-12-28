@@ -225,7 +225,12 @@ class WebhookController extends Controller
 
         $sessionId = $payload['sessionId'] ?? null;
         $data = $payload['data'] ?? [];
-        $recordingLink = $data['preAuthenticatedLink'] ?? null;
+        
+        // Robust check for recording link
+        $recordingLink = $data['preAuthenticatedLink'] 
+             ?? $data['url'] 
+             ?? $data['fileUrl'] 
+             ?? null;
 
         if (!$recordingLink) {
             return;
