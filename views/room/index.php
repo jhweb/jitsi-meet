@@ -90,7 +90,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     ?>
                     
                     <?php if ((!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls)) && !$isExpired): ?>
-                        <?= ModalButton::default('VIEW RECORDING & DOWNLOADS')
+                        <?= ModalButton::primary('VIEW RECORDING & DOWNLOADS')
                             ->load(Url::to(['details', 'id' => $stream->id]))
                             ->cssClass('btn btn-default btn-stream-replay')
                             ->options([
