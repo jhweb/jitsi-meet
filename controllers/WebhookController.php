@@ -102,6 +102,19 @@ class WebhookController extends Controller
             case 'PARTICIPANT_LEFT':
                 $this->handleParticipantLeft($roomName, $payload);
                 break;
+            case 'TRANSCRIPTION_UPLOADED':
+                $this->handleTranscriptionUploaded($roomName, $payload);
+                break;
+            case 'CHAT_UPLOADED':
+                $this->handleChatUploaded($roomName, $payload);
+                break;
+            case 'DOCUMENT_ADDED': // Assuming generic name or use user specific "Files downloads"
+                // The user specified "Files downloads (DOCUMENT_ADDED)"
+                $this->handleDocumentAdded($roomName, $payload);
+                break;
+            case 'AGGREGATED_REACTIONS':
+                $this->handleAggregatedReactions($roomName, $payload);
+                break;
             default:
                 Yii::error("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
@@ -352,5 +365,89 @@ class WebhookController extends Controller
                  Yii::info("Jitsi Webhook: Active count decremented for room $roomName", 'jitsi-meet-cloud-8x8');
             }
         }
+    }
+
+    private function handleTranscriptionUploaded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: TRANSCRIPTION_UPLOADED for $roomName", 'jitsi-meet-cloud-8x8');
+        $this->updateStreamMetadata($roomName, $payload, 'transcription_url');
+    }
+
+    private function handleChatUploaded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: CHAT_UPLOADED for $roomName", 'jitsi-meet-cloud-8x8');
+        $this->updateStreamMetadata($roomName, $payload, 'chat_log_url');
+    }
+
+    private function handleDocumentAdded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: DOCUMENT_ADDED for $roomName", 'jitsi-meet-cloud-8x8');
+        // This handles a single file addition, appending to the list
+        $sessionId = $payload['sessionId'] ?? null;
+        $link = $payload['data']['preAuthenticatedLink'] ?? $payload['data']['url'] ?? null;
+        
+        if (!$link) {
+             return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            if ($stream->addFileUrl($link) && $stream->save()) {
+                Yii::info("Jitsi Webhook: Added file URL to stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            }
+        }
+    }
+
+    private function handleAggregatedReactions($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: AGGREGATED_REACTIONS for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $reactions = $payload['data'] ?? []; // Assuming payload data IS the reactions object or contains it
+        
+        if (empty($reactions)) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $stream->reactions = json_encode($reactions);
+            $stream->save();
+        }
+    }
+    
+    /**
+     * Helper to update simple URL text fields
+     */
+    private function updateStreamMetadata($roomName, $payload, $attribute)
+    {
+        $sessionId = $payload['sessionId'] ?? null;
+        $link = $payload['data']['preAuthenticatedLink'] ?? $payload['data']['url'] ?? null;
+
+        if (!$link) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $stream->$attribute = $link;
+            $stream->save();
+             Yii::info("Jitsi Webhook: Updated $attribute for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+        }
+    }
+
+    private function findStream($roomName, $sessionId)
+    {
+        $stream = null;
+        if ($sessionId) {
+            $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
+        }
+        if (!$stream) {
+            // Find most recent matching room
+             $stream = JitsiLiveStream::find()
+                ->where(['room_name' => $roomName])
+                ->orderBy(['created_at' => SORT_DESC])
+                ->one();
+        }
+        return $stream;
     }
 }

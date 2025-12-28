@@ -206,6 +206,22 @@ class RoomController extends Controller
      * Note: inviteServiceUrl is primarily for sending invitations, but we can use it to override URL format
      * Handles both GET and POST requests
      */
+    /**
+     * Renders stream details modal
+     * @param int $id Stream ID
+     */
+    public function actionDetails($id)
+    {
+        $stream = JitsiLiveStream::findOne($id);
+        if (!$stream) {
+            throw new \yii\web\NotFoundHttpException();
+        }
+
+        return $this->renderAjax('modal_details', [
+            'stream' => $stream
+        ]);
+    }
+
     public function actionInvite()
     {
         $settings = $this->module->getSettingsForm();

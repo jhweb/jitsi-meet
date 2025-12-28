@@ -48,7 +48,7 @@ class JitsiLiveStream extends ActiveRecord
             [['status', 'creator_id', 'participant_count', 'active_count'], 'integer'],
             [['start_time', 'end_time', 'created_at', 'updated_at'], 'safe'],
             [['room_name', 'session_id', 'stream_url', 'event_id'], 'string', 'max' => 255],
-            [['recording_url'], 'safe'],
+            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions'], 'safe'],
             [['event_id'], 'unique'],
         ];
     }
@@ -69,6 +69,10 @@ class JitsiLiveStream extends ActiveRecord
             'participant_count' => 'Participants',
             'stream_url' => 'Stream URL',
             'recording_url' => 'Recording URL',
+            'transcription_url' => 'Transcript',
+            'chat_log_url' => 'Chat Log',
+            'file_urls' => 'Files',
+            'reactions' => 'Reactions',
             'event_id' => 'Event ID',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
@@ -110,5 +114,47 @@ class JitsiLiveStream extends ActiveRecord
             return floor($diff / 60) . 'm';
         }
         return floor($diff / 3600) . 'h ' . floor(($diff % 3600) / 60) . 'm';
+    }
+
+    /**
+     * Decode file URLs from JSON
+     * @return array
+     */
+    public function getFiles()
+    {
+        if (empty($this->file_urls)) {
+            return [];
+        }
+        $files = json_decode($this->file_urls, true);
+        return is_array($files) ? $files : [];
+    }
+
+    /**
+     * Add a file URL to the list
+     * @param string $url
+     * @return bool
+     */
+    public function addFileUrl($url)
+    {
+        $files = $this->getFiles();
+        if (!in_array($url, $files)) {
+            $files[] = $url;
+            $this->file_urls = json_encode($files);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get parsed reactions
+     * @return array
+     */
+    public function getReactions()
+    {
+        if (empty($this->reactions)) {
+            return [];
+        }
+        $reactions = json_decode($this->reactions, true);
+        return is_array($reactions) ? $reactions : [];
     }
 }
