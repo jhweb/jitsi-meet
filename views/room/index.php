@@ -2,6 +2,7 @@
 
 use humhub\libs\Html;
 use humhub\widgets\Button;
+use humhub\widgets\ModalButton;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
 use yii\widgets\LinkPager;
@@ -89,9 +90,13 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     ?>
                     
                     <?php if ((!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls)) && !$isExpired): ?>
-                        <a href="<?= Url::to(['details', 'id' => $stream->id]) ?>" class="btn btn-default btn-stream-replay" data-target="#globalModal" style="font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;">
-                            VIEW RECORDING & DOWNLOADS
-                        </a>
+                        <?= ModalButton::default('VIEW RECORDING & DOWNLOADS')
+                            ->load(Url::to(['details', 'id' => $stream->id]))
+                            ->cssClass('btn btn-default btn-stream-replay')
+                            ->options([
+                                'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
+                            ]) 
+                        ?>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
