@@ -384,7 +384,8 @@ class WebhookController extends Controller
         Yii::info("Jitsi Webhook: DOCUMENT_ADDED for $roomName", 'jitsi-meet-cloud-8x8');
         // This handles a single file addition, appending to the list
         $sessionId = $payload['sessionId'] ?? null;
-        $link = $payload['data']['preAuthenticatedLink'] ?? $payload['data']['url'] ?? null;
+        $data = $payload['data'] ?? [];
+        $link = $data['preAuthenticatedLink'] ?? $data['url'] ?? $data['fileUrl'] ?? null;
         
         if (!$link) {
              return;
@@ -421,17 +422,31 @@ class WebhookController extends Controller
     private function updateStreamMetadata($roomName, $payload, $attribute)
     {
         $sessionId = $payload['sessionId'] ?? null;
-        $link = $payload['data']['preAuthenticatedLink'] ?? $payload['data']['url'] ?? null;
+        $data = $payload['data'] ?? [];
+        
+        // Try multiple common keys for the link
+        $link = $data['preAuthenticatedLink'] 
+             ?? $data['url'] 
+             ?? $data['chatLogUrl'] 
+             ?? $data['transcriptionUrl'] 
+             ?? $data['fileUrl'] 
+             ?? null;
 
         if (!$link) {
+            Yii::warning("Jitsi Webhook: No link found in payload for $attribute. Room: $roomName", 'jitsi-meet-cloud-8x8');
             return;
         }
 
         $stream = $this->findStream($roomName, $sessionId);
         if ($stream) {
             $stream->$attribute = $link;
-            $stream->save();
-             Yii::info("Jitsi Webhook: Updated $attribute for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            if ($stream->save()) {
+                 Yii::info("Jitsi Webhook: Updated $attribute for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            } else {
+                 Yii::error("Jitsi Webhook: Failed to save $attribute for stream {$stream->id}. Errors: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            }
+        } else {
+             Yii::warning("Jitsi Webhook: Stream not found for metadata update ($attribute). Room: $roomName", 'jitsi-meet-cloud-8x8');
         }
     }
 
@@ -442,12 +457,21 @@ class WebhookController extends Controller
             $stream = JitsiLiveStream::findOne(['session_id' => $sessionId]);
         }
         if (!$stream) {
-            // Find most recent matching room
+            // Find most recent matching room (Exact match)
              $stream = JitsiLiveStream::find()
                 ->where(['room_name' => $roomName])
                 ->orderBy(['created_at' => SORT_DESC])
                 ->one();
         }
+        
+        if (!$stream) {
+            // Fallback: Case-insensitive search
+             $stream = JitsiLiveStream::find()
+                ->where(['LOWER(room_name)' => strtolower($roomName)])
+                ->orderBy(['created_at' => SORT_DESC])
+                ->one();
+        }
+
         return $stream;
     }
 }

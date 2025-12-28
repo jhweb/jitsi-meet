@@ -43,9 +43,14 @@ if (!empty($stream->end_time)) {
             <hr>
 
             <div class="list-group">
+                <?php 
+                $isExpired = ($expirationTime && time() >= $expirationTime);
+                $disabledStyle = $isExpired ? 'pointer-events: none; opacity: 0.5; background-color: #f5f5f5;' : '';
+                ?>
+
                 <!-- Watch Video -->
                 <?php if (!empty($stream->recording_url)): ?>
-                    <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item">
+                    <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-video-camera" style="margin-right: 10px;"></i> 
                         Watch Video Recording
                         <span class="pull-right"><i class="fa fa-external-link"></i></span>
@@ -54,7 +59,7 @@ if (!empty($stream->end_time)) {
 
                 <!-- Transcript -->
                 <?php if (!empty($stream->transcription_url)): ?>
-                    <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item">
+                    <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-file-text-o" style="margin-right: 10px;"></i>
                         Download Transcript
                         <span class="pull-right"><i class="fa fa-download"></i></span>
@@ -63,7 +68,7 @@ if (!empty($stream->end_time)) {
 
                 <!-- Chat Log -->
                 <?php if (!empty($stream->chat_log_url)): ?>
-                    <a href="<?= Html::encode($stream->chat_log_url) ?>" target="_blank" class="list-group-item">
+                    <a href="<?= Html::encode($stream->chat_log_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-comments-o" style="margin-right: 10px;"></i>
                         Download Chat Log
                         <span class="pull-right"><i class="fa fa-download"></i></span>
@@ -76,7 +81,7 @@ if (!empty($stream->end_time)) {
                 if (!empty($files)): 
                     foreach($files as $index => $fileUrl):
                 ?>
-                    <a href="<?= Html::encode($fileUrl) ?>" target="_blank" class="list-group-item">
+                    <a href="<?= Html::encode($fileUrl) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-file-o" style="margin-right: 10px;"></i>
                         Download File <?= $index + 1 ?>
                         <span class="pull-right"><i class="fa fa-download"></i></span>
