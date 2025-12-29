@@ -114,6 +114,11 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     <?php elseif ($isProcessing): ?>
                         <div style="margin-top: 10px; font-size: 11px; color: #2196F3; text-align: center;">
                             <i class="fa fa-spinner fa-pulse"></i> Processing recording & data...
+                            <!-- DEBUG: 
+                                Time: <?= time() ?> 
+                                End: <?= $stream->end_time ?> (<?= strtotime($stream->end_time) ?>)
+                                Diff: <?= $secondsSinceEnd ?>
+                            -->
                         </div>
                     <?php else: ?>
                          <!-- Old stream with no data: Show nothing or a placeholder -->
