@@ -61,8 +61,21 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?php foreach ($endedStreams as $stream): ?>
                 <?php 
                     $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));
-                    $cardClass = $hasDownloads ? 'ended' : 'processing';
-                    $badgeText = $hasDownloads ? 'ENDED LIVE' : 'PROCESSING';
+                    
+                    // Logic: If no downloads, it's 'Processing' ONLY if it ended recently (e.g., within 1 hour).
+                    // Otherwise, it's just an old ended stream with no data.
+                    $secondsSinceEnd = time() - strtotime($stream->end_time);
+                    $processingThreshold = 3600; // 1 hour
+                    
+                    $isProcessing = !$hasDownloads && ($secondsSinceEnd < $processingThreshold);
+                    
+                    if ($isProcessing) {
+                        $cardClass = 'processing';
+                        $badgeText = 'PROCESSING';
+                    } else {
+                        $cardClass = 'ended';
+                        $badgeText = 'ENDED LIVE';
+                    }
                 ?>
                 <div class="stream-card <?= $cardClass ?>">
                     <div class="stream-badge"><?= $badgeText ?></div>
@@ -102,10 +115,13 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                                 'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
                             ]) 
                         ?>
-                    <?php else: ?>
+                    <?php elseif ($isProcessing): ?>
                         <div style="margin-top: 10px; font-size: 11px; color: #2196F3; text-align: center;">
                             <i class="fa fa-spinner fa-pulse"></i> Processing recording & data...
                         </div>
+                    <?php else: ?>
+                         <!-- Old stream with no data: Show nothing or a placeholder -->
+                         <div style="min-height: 42px;"></div>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
