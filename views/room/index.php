@@ -62,12 +62,18 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?php 
                     $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));
                     
-                    // Logic: If no downloads, it's 'Processing' ONLY if it ended recently (e.g., within 1 hour).
-                    // Otherwise, it's just an old ended stream with no data.
-                    $secondsSinceEnd = time() - strtotime($stream->end_time);
-                    $processingThreshold = 3600; // 1 hour
-                    
-                    $isProcessing = !$hasDownloads && ($secondsSinceEnd < $processingThreshold);
+                    // Check expiration first (24h validity)
+                    $isExpired = false;
+                    if (!empty($stream->end_time)) {
+                        $secondsSinceEnd = time() - strtotime($stream->end_time);
+                        if ($secondsSinceEnd > (24 * 60 * 60)) {
+                            $isExpired = true;
+                        }
+                    }
+
+                    // Logic: Processing if NO downloads and still within the 24h validity window.
+                    // Old history (>24h) will default to Ended (Green).
+                    $isProcessing = !$hasDownloads && !$isExpired;
                     
                     if ($isProcessing) {
                         $cardClass = 'processing';
@@ -96,16 +102,6 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         <br>
                         Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
-                    
-                <?php 
-                    $isExpired = false;
-                    if (!empty($stream->end_time)) {
-                        $secondsSinceEnd = time() - strtotime($stream->end_time);
-                        if ($secondsSinceEnd > (24 * 60 * 60)) {
-                            $isExpired = true;
-                        }
-                    }
-                    ?>
                     
                     <?php if ($hasDownloads): ?>
                         <?= ModalButton::primary('DOWNLOAD FILES')
