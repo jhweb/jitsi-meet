@@ -93,8 +93,7 @@ class WebhookController extends Controller
                  // $this->handleLiveStreamEnded($roomName, $payload);
                  break;
             case 'RECORDING_ENDED':
-                 // Log event but do nothing else for now
-                 Yii::info("Jitsi Webhook: RECORDING_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
+                 $this->handleRecordingEnded($roomName, $payload);
                  break;
             case 'PARTICIPANT_JOINED':
                 $this->handleParticipantJoined($roomName, $payload);
@@ -228,6 +227,23 @@ class WebhookController extends Controller
             $stream->active_count = 0; // Reset active count when room destroyed
             $stream->end_time = date('Y-m-d H:i:s', $payload['timestamp'] / 1000);
             $stream->save();
+        }
+    }
+
+    private function handleRecordingEnded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: RECORDING_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = $this->findStream($roomName, $sessionId);
+
+        if ($stream && $stream->status == JitsiLiveStream::STATUS_LIVE) {
+            $stream->status = JitsiLiveStream::STATUS_ENDED;
+            // Set end time to recording end time (approximate meeting end) via webhook timestamp
+            $stream->end_time = date('Y-m-d H:i:s', ($payload['timestamp'] ?? time() * 1000) / 1000);
+            
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Stream status set to ENDED via RECORDING_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
+            }
         }
     }
 
