@@ -71,20 +71,9 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         }
                     }
 
-                    // Logic: Processing if NO downloads and still within the 24h validity window.
-                    // Old history (>24h) will default to Ended (Green).
-                    $isProcessing = !$hasDownloads && !$isExpired;
-                    
-                    if ($isProcessing) {
-                        $cardClass = 'processing';
-                        $badgeText = 'PROCESSING';
-                    } else {
-                        $cardClass = 'ended';
-                        $badgeText = 'ENDED LIVE';
-                    }
                 ?>
-                <div class="stream-card <?= $cardClass ?>">
-                    <div class="stream-badge"><?= $badgeText ?></div>
+                <div class="stream-card ended">
+                    <div class="stream-badge">ENDED LIVE</div>
                     
                     <div class="stream-title"><?= Html::encode($stream->room_name) ?></div>
                     <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
@@ -103,22 +92,14 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
                     
-                    <?php if ($hasDownloads): ?>
-                        <?= ModalButton::primary('DOWNLOAD FILES')
-                            ->load(Url::to(['details', 'id' => $stream->id]))
-                            ->cssClass('btn btn-default btn-stream-replay')
-                            ->options([
-                                'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
-                            ]) 
-                        ?>
-                    <?php elseif ($isProcessing): ?>
-                        <div style="margin-top: 10px; font-size: 11px; color: #2196F3; text-align: center;">
-                            <i class="fa fa-spinner fa-pulse"></i> Processing recording & data...
-                        </div>
-                    <?php else: ?>
-                         <!-- Old stream with no data: Show nothing or a placeholder -->
-                         <div style="min-height: 42px;"></div>
-                    <?php endif; ?>
+                    
+                    <?= ModalButton::primary('DOWNLOAD FILES')
+                        ->load(Url::to(['details', 'id' => $stream->id]))
+                        ->cssClass('btn btn-default btn-stream-replay')
+                        ->options([
+                            'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
+                        ]) 
+                    ?>
                 </div>
                 <?php endforeach; ?>
 

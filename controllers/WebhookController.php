@@ -90,13 +90,16 @@ class WebhookController extends Controller
                 // $this->handleLiveStreamStarted($roomName, $payload); 
                 break;
             case 'LIVE_STREAM_ENDED':
-                 // $this->handleLiveStreamEnded($roomName, $payload);
+                 $this->handleLiveStreamEnded($roomName, $payload);
                  break;
             case 'RECORDING_ENDED':
                  $this->handleRecordingEnded($roomName, $payload);
                  break;
             case 'PARTICIPANT_JOINED':
                 $this->handleParticipantJoined($roomName, $payload);
+                break;
+            case 'RECORDING_STARTED':
+                $this->handleRecordingStarted($roomName, $payload);
                 break;
             case 'PARTICIPANT_LEFT':
                 $this->handleParticipantLeft($roomName, $payload);
@@ -244,6 +247,20 @@ class WebhookController extends Controller
             if ($stream->save()) {
                 Yii::info("Jitsi Webhook: Stream status set to ENDED via RECORDING_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
             }
+        }
+    }
+
+    private function handleLiveStreamEnded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: LIVE_STREAM_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = $this->findStream($roomName, $sessionId);
+
+        if ($stream && $stream->status == JitsiLiveStream::STATUS_LIVE) {
+            $stream->status = JitsiLiveStream::STATUS_ENDED;
+            $stream->end_time = date('Y-m-d H:i:s', ($payload['timestamp'] ?? time() * 1000) / 1000);
+            $stream->save();
+            Yii::info("Jitsi Webhook: Stream status set to ENDED via LIVE_STREAM_ENDED for $roomName", 'jitsi-meet-cloud-8x8');
         }
     }
 
@@ -543,6 +560,20 @@ class WebhookController extends Controller
         }
     }
     
+    private function handleRecordingStarted($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: RECORDING_STARTED for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $stream = $this->findStream($roomName, $sessionId);
+
+        if ($stream) {
+            $stream->has_recording = 1;
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Mark has_recording=1 for $roomName", 'jitsi-meet-cloud-8x8');
+            }
+        }
+    }
+
     private function handleVideoSegmentUploaded($roomName, $payload)
     {
         Yii::info("Jitsi Webhook: VIDEO_SEGMENT_UPLOADED (Highlights) for $roomName", 'jitsi-meet-cloud-8x8');

@@ -59,7 +59,26 @@ if (!empty($stream->end_time)) {
                         Download Video Recording
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
+                <?php elseif ($stream->has_recording && !$isExpired): ?>
+                    <div class="list-group-item disabled" style="color: #999;">
+                        <i class="fa fa-spinner fa-fw fa-pulse" style="margin-right: 10px;"></i> 
+                        Processing Video Recording...
+                    </div>
                 <?php endif; ?>
+
+                <?php if (!empty($stream->highlights_url)): ?>
+                    <a href="<?= Html::encode($stream->highlights_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
+                        <i class="fa fa-film fa-fw" style="margin-right: 10px;"></i>
+                        Download Highlights (90s)
+                        <span class="pull-right"><i class="fa fa-download"></i></span>
+                    </a>
+                <?php elseif ($stream->has_recording && !$isExpired): ?>
+                    <div class="list-group-item disabled" style="color: #999;">
+                        <i class="fa fa-spinner fa-fw fa-pulse" style="margin-right: 10px;"></i> 
+                        Processing Highlights...
+                    </div>
+                <?php endif; ?>
+
                 <?php if (!empty($stream->transcription_url)): ?>
                     <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-file-text-o fa-fw" style="margin-right: 10px;"></i>
@@ -85,7 +104,7 @@ if (!empty($stream->end_time)) {
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endforeach; endif; ?>
-                <?php if (empty($stream->recording_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files)): ?>
+                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files) && $isExpired): ?>
                     <div class="text-center text-muted" style="padding: 20px;">
                         No downloads available for this stream.
                     </div>
@@ -139,6 +158,10 @@ if (!empty($stream->end_time)) {
                             </video>
                         </div>
                     </div>
+                <?php elseif ($stream->has_recording && !$isExpired): ?>
+                    <div class="alert alert-info">
+                        <i class="fa fa-spinner fa-pulse"></i> Full recording is still processing...
+                    </div>
                 <?php endif; ?>
 
                 <?php if (!empty($stream->highlights_url)): ?>
@@ -151,6 +174,8 @@ if (!empty($stream->end_time)) {
                             </video>
                         </div>
                     </div>
+                <?php elseif (!$isExpired): ?>
+                     <!-- Don't show highlights placeholder if main recording is also processing, to avoid clutter. Or show if you prefer. -->
                 <?php endif; ?>
 
                 <?php if (!empty($screenSharingContent) && is_array($screenSharingContent)): ?>
@@ -172,7 +197,7 @@ if (!empty($stream->end_time)) {
                     </div>
                 <?php endif; ?>
                 
-                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($screenSharingContent)): ?>
+                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($screenSharingContent) && $isExpired): ?>
                     <div class="text-center text-muted" style="padding: 20px;">
                         No video or screenshots available to watch.
                     </div>
@@ -303,7 +328,7 @@ if (!empty($stream->end_time)) {
                     [
                         'label' => 'Watch',
                         'content' => $watchTabContent,
-                        'visible' => (!empty($stream->recording_url) || !empty($stream->highlights_url) || !empty($screenSharingContent)),
+                        'visible' => (!$isExpired && ($stream->has_recording || !empty($stream->recording_url) || !empty($stream->highlights_url) || !empty($screenSharingContent))),
                     ],
                     [
                         'label' => 'Session Data',
