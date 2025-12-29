@@ -139,6 +139,11 @@ if (!empty($stream->end_time)) {
         if (expirationTimestamp > 0) {
             updateTimer();
             var timerInterval = setInterval(updateTimer, 1000);
+
+            // Cleanup when modal is closed
+            $(document).one('hidden.bs.modal', '#globalModal', function () {
+                clearInterval(timerInterval);
+            });
         }
     })();
 </script>
