@@ -97,6 +97,14 @@
     margin-bottom: 5px;
 }
 
+.stream-card.processing {
+    border: 2px solid #2196F3;
+}
+
+.stream-card.processing .stream-badge {
+    color: #2196F3;
+}
+
 .stream-info {
     color: #aaa;
     font-size: 12px;

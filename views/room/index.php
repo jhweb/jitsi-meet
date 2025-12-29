@@ -59,8 +59,13 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?php endforeach; ?>
 
                 <?php foreach ($endedStreams as $stream): ?>
-                <div class="stream-card ended">
-                    <div class="stream-badge">ENDED LIVE</div>
+                <?php 
+                    $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));
+                    $cardClass = $hasDownloads ? 'ended' : 'processing';
+                    $badgeText = $hasDownloads ? 'ENDED LIVE' : 'PROCESSING';
+                ?>
+                <div class="stream-card <?= $cardClass ?>">
+                    <div class="stream-badge"><?= $badgeText ?></div>
                     
                     <div class="stream-title"><?= Html::encode($stream->room_name) ?></div>
                     <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
@@ -89,7 +94,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     }
                     ?>
                     
-                    <?php if (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls)): ?>
+                    <?php if ($hasDownloads): ?>
                         <?= ModalButton::primary('DOWNLOAD FILES')
                             ->load(Url::to(['details', 'id' => $stream->id]))
                             ->cssClass('btn btn-default btn-stream-replay')
@@ -97,6 +102,10 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                                 'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
                             ]) 
                         ?>
+                    <?php else: ?>
+                        <div style="margin-top: 10px; font-size: 11px; color: #2196F3; text-align: center;">
+                            <i class="fa fa-spinner fa-pulse"></i> Processing recording & data...
+                        </div>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
