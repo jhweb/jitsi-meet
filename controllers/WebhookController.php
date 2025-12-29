@@ -115,6 +115,12 @@ class WebhookController extends Controller
             case 'AGGREGATED_REACTIONS':
                 $this->handleAggregatedReactions($roomName, $payload);
                 break;
+            case 'POLL_CREATED':
+                $this->handlePollCreated($roomName, $payload);
+                break;
+            case 'POLL_ANSWER':
+                $this->handlePollAnswer($roomName, $payload);
+                break;
             default:
                 Yii::error("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
@@ -418,6 +424,100 @@ class WebhookController extends Controller
         if ($stream) {
             $stream->reactions = json_encode($reactions);
             $stream->save();
+        }
+    }
+
+    private function handlePollCreated($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: POLL_CREATED for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $data = $payload['data'] ?? [];
+        $pollId = $data['pollId'] ?? null;
+
+        if (!$pollId) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $polls = json_decode($stream->polls, true) ?? [];
+            
+            // Initialize poll if not exists
+            if (!isset($polls[$pollId])) {
+                $polls[$pollId] = [
+                    'question' => $data['question'] ?? 'Unknown Question',
+                    'options' => $data['answers'] ?? [],
+                    'votes' => []
+                ];
+                
+                $stream->polls = json_encode($polls);
+                $stream->save();
+            }
+        }
+    }
+
+    private function handlePollAnswer($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: POLL_ANSWER for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $data = $payload['data'] ?? [];
+        $pollId = $data['pollId'] ?? null;
+        $answers = $data['answers'] ?? [];
+        
+        $voterId = $data['user']['participantId'] ?? $data['user']['id'] ?? 'unknown_'.time();
+        $voterName = $data['user']['name'] ?? 'Unknown';
+
+        if (!$pollId) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $polls = json_decode($stream->polls, true) ?? [];
+
+            if (!isset($polls[$pollId])) {
+                 $polls[$pollId] = [
+                    'question' => 'Poll ' . $pollId,
+                    'options' => [],
+                    'votes' => []
+                ];
+            }
+            
+            // Reconstruct options
+            foreach ($answers as $ans) {
+                $key = $ans['key'];
+                $exists = false;
+                foreach ($polls[$pollId]['options'] as $opt) {
+                    if (isset($opt['key']) && $opt['key'] == $key) {
+                        $exists = true; 
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $polls[$pollId]['options'][] = ['key' => $key, 'name' => $ans['name']];
+                }
+            }
+
+            // Record Vote
+            $selectedKeys = [];
+            foreach ($answers as $ans) {
+                if (!empty($ans['value']) && $ans['value'] === true) {
+                    $selectedKeys[] = $ans['key'];
+                }
+            }
+
+            $polls[$pollId]['votes'][$voterId] = [
+                'name' => $voterName,
+                'keys' => $selectedKeys,
+                'timestamp' => time()
+            ];
+
+            $stream->polls = json_encode($polls);
+            if ($stream->save()) {
+                 Yii::info("Jitsi Webhook: Saved vote for poll $pollId. User: $voterName", 'jitsi-meet-cloud-8x8');
+            } else {
+                 Yii::error("Jitsi Webhook: Failed to save vote. Error: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            }
         }
     }
     

@@ -91,11 +91,112 @@ if (!empty($stream->end_time)) {
                 <!-- Reactions -->
                 <?php if (!empty($stream->reactions)): ?>
                      <div class="list-group-item">
-                        <i class="fa fa-smile-o" style="margin-right: 10px;"></i>
-                        Reactions
-                        <pre style="margin-top: 10px; font-size: 10px;"><?= Html::encode(json_encode(json_decode($stream->reactions), JSON_PRETTY_PRINT)) ?></pre>
+                        <div style="cursor: pointer;" data-toggle="collapse" data-target="#reactions-list">
+                            <h5 class="list-group-item-heading" style="margin-bottom: 0;">
+                                <i class="fa fa-smile-o fa-fw" style="margin-right: 5px;"></i> Reactions
+                                <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
+                            </h5>
+                        </div>
+                        <div id="reactions-list" class="collapse list-group-item-text" style="margin-top: 10px;">
+                        <?php 
+                            $reactionsData = json_decode($stream->reactions, true);
+                            if (is_array($reactionsData)):
+                        ?>
+                            <ul class="list-unstyled" style="margin-left: 20px;">
+                                <?php foreach ($reactionsData as $reaction): ?>
+                                    <?php 
+                                        $emoji = '🙂';
+                                        // Map 8x8 reactions to emojis or icons
+                                        switch ($reaction['reaction'] ?? '') {
+                                            case 'like': $emoji = '👍'; break;
+                                            case 'thumbsup': $emoji = '👍'; break;
+                                            case 'claps': $emoji = '👏'; break;
+                                            case 'applause': $emoji = '👏'; break;
+                                            case 'smile': $emoji = '😄'; break;
+                                            case 'surprised': $emoji = '😮'; break;
+                                            case 'silent': $emoji = '😶'; break;
+                                            case 'silence': $emoji = '😶'; break;
+                                            case 'boo': $emoji = '👎'; break;
+                                            case 'love': $emoji = '❤️'; break;
+                                            case 'laugh': $emoji = '😂'; break;
+                                            default: $emoji = '🙂';
+                                        }
+                                        $name = Html::encode($reaction['participantName'] ?? 'Unknown');
+                                    ?>
+                                    <li style="margin-bottom: 5px;">
+                                        <span style="display: inline-block; width: 20px; text-align: center; margin-right: 5px;"><?= $emoji ?></span> 
+                                        <strong><?= $name ?></strong> 
+                                        <span class="text-muted" style="font-size: 10px;">
+                                            (<?= isset($reaction['timestamp']) ? Yii::$app->formatter->asTime($reaction['timestamp'] / 1000) : '' ?>)
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <pre><?= Html::encode($stream->reactions) ?></pre>
+                        <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
+
+                <!-- Polls -->
+                <?php 
+                if (!empty($stream->polls)) {
+                     $pollsData = json_decode($stream->polls, true);
+                     if (!empty($pollsData)) {
+                        foreach ($pollsData as $pollId => $poll) {
+                            // Calculate Results
+                            $results = [];
+                            $totalVotes = 0;
+                            // Initialize counts
+                            foreach ($poll['options'] as $opt) {
+                                $results[$opt['key']] = 0;
+                            }
+                            // Tally votes
+                            if (isset($poll['votes'])) {
+                                foreach ($poll['votes'] as $voterId => $vote) {
+                                    foreach ($vote['keys'] as $k) {
+                                        if (isset($results[$k])) {
+                                            $results[$k]++;
+                                            $totalVotes++;
+                                        } elseif (array_key_exists($k, $results)) {
+                                            $results[$k]++;
+                                            $totalVotes++;
+                                        }
+                                    }
+                                }
+                            }
+                            ?>
+                            <div class="list-group-item">
+                                <div style="cursor: pointer;" data-toggle="collapse" data-target="#poll-<?= $pollId ?>">
+                                    <h5 class="list-group-item-heading" style="margin-bottom: 0;">
+                                        <i class="fa fa-bar-chart fa-fw" style="margin-right: 5px;"></i> Poll: <?= Html::encode($poll['question']) ?>
+                                         <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
+                                    </h5>
+                                </div>
+                                <div id="poll-<?= $pollId ?>" class="collapse list-group-item-text" style="margin-top: 10px;">
+                                    <ul class="list-unstyled" style="margin-left: 20px;">
+                                        <?php foreach ($poll['options'] as $opt): 
+                                            $count = $results[$opt['key']] ?? 0;
+                                            $percent = $totalVotes > 0 ? round(($count / $totalVotes) * 100) : 0;
+                                        ?>
+                                        <li style="margin-bottom: 8px;">
+                                            <strong><?= Html::encode($opt['name']) ?></strong>
+                                            <span class="pull-right text-muted"><?= $count ?> votes (<?= $percent ?>%)</span>
+                                            <div class="progress" style="height: 5px; margin-bottom:0;">
+                                                <div class="progress-bar" role="progressbar" style="width: <?= $percent ?>%; background-color: #2196F3;"></div>
+                                            </div>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            </div>
+                            <?php
+                        }
+                     }
+                }
+                ?>
+
 
                  <?php if (empty($stream->recording_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files)): ?>
                     <div class="text-center text-muted" style="padding: 20px;">
