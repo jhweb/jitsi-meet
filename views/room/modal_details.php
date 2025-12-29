@@ -42,14 +42,17 @@ if (!empty($stream->end_time)) {
 
             <hr>
 
-            <!-- Downloads Section -->
-            <h5 style="margin-top: 5px; margin-bottom: 5px; color: #999; text-transform: uppercase; font-size: 11px; font-weight: bold;">Downloads</h5>
+            <?php
+            use humhub\widgets\Tabs;
+            
+            // 1. Capture Downloads Content
+            ob_start();
+            ?>
             <div class="list-group">
                 <?php 
                 $isExpired = ($expirationTime && time() >= $expirationTime);
                 $disabledStyle = $isExpired ? 'pointer-events: none; opacity: 0.5; background-color: #f5f5f5;' : '';
                 ?>
-                <!-- Watch Video -->
                 <?php if (!empty($stream->recording_url)): ?>
                     <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-video-camera fa-fw" style="margin-right: 10px;"></i> 
@@ -57,8 +60,6 @@ if (!empty($stream->end_time)) {
                         <span class="pull-right"><i class="fa fa-external-link"></i></span>
                     </a>
                 <?php endif; ?>
-
-                <!-- Transcript -->
                 <?php if (!empty($stream->transcription_url)): ?>
                     <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-file-text-o fa-fw" style="margin-right: 10px;"></i>
@@ -66,8 +67,6 @@ if (!empty($stream->end_time)) {
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endif; ?>
-
-                <!-- Chat Log -->
                 <?php if (!empty($stream->chat_log_url)): ?>
                     <a href="<?= Html::encode($stream->chat_log_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-comments-o fa-fw" style="margin-right: 10px;"></i>
@@ -75,8 +74,6 @@ if (!empty($stream->end_time)) {
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endif; ?>
-                
-                <!-- Files -->
                 <?php 
                 $files = $stream->getFiles();
                 if (!empty($files)): 
@@ -88,32 +85,39 @@ if (!empty($stream->end_time)) {
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endforeach; endif; ?>
-            
                 <?php if (empty($stream->recording_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files)): ?>
-                    <div class="text-center text-muted" style="padding: 10px; font-size: 12px; border: 1px dashed #ddd; background: #fafafa;">
-                        No downloads available.
+                    <div class="text-center text-muted" style="padding: 20px;">
+                        No downloads available for this stream.
                     </div>
                 <?php endif; ?>
             </div>
+            <?php
+            $downloadsContent = ob_get_clean();
 
-            <!-- Session Data Section -->
-            <?php if (!empty($stream->reactions) || !empty($stream->polls)): ?>
-            <h5 style="margin-top: 15px; margin-bottom: 5px; color: #999; text-transform: uppercase; font-size: 11px; font-weight: bold;">Session Data</h5>
-            <div class="list-group">
-                
+            // 2. Capture Chat Log Content
+            $chatTabContent = '';
+            if (!empty($chatLogContent)) {
+                 $chatTabContent = '<div style="max-height: 400px; overflow-y: auto; background: #f9f9f9; padding: 10px; border: 1px solid #eee;">';
+                 $chatTabContent .= '<pre style="white-space: pre-wrap; word-wrap: break-word; background: transparent; border: none;">' . Html::encode($chatLogContent) . '</pre>';
+                 $chatTabContent .= '</div>';
+            }
+
+            // 3. Capture Session Data (Polls/Reactions)
+            ob_start();
+            ?>
+             <div class="list-group">
                 <!-- Reactions -->
                 <?php if (!empty($stream->reactions)): ?>
                      <div class="list-group-item">
-                        <a href="#reactions-list" data-toggle="collapse" class="list-group-item-heading" style="display: block; color: inherit; text-decoration: none; margin-bottom: 0;">
+                        <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
                              <i class="fa fa-smile-o fa-fw" style="margin-right: 5px;"></i> Reactions
-                             <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
-                        </a>
-                        <div id="reactions-list" class="collapse list-group-item-text" style="margin-top: 10px;">
+                        </h5>
+                        <div style="margin-top: 10px;">
                         <?php 
                             $reactionsData = json_decode($stream->reactions, true);
                             if (is_array($reactionsData)):
                         ?>
-                            <ul class="list-unstyled" style="margin-left: 20px;">
+                            <ul class="list-unstyled" style="margin-left: 10px;">
                                 <?php foreach ($reactionsData as $reaction): ?>
                                     <?php 
                                         $emoji = '🙂';
@@ -155,7 +159,6 @@ if (!empty($stream->end_time)) {
                      $pollsData = json_decode($stream->polls, true);
                      if (!empty($pollsData)) {
                         foreach ($pollsData as $pollId => $poll) {
-                            // Calculate Results
                             $results = [];
                             $totalVotes = 0;
                             foreach ($poll['options'] as $opt) {
@@ -176,12 +179,11 @@ if (!empty($stream->end_time)) {
                             }
                             ?>
                             <div class="list-group-item">
-                                <a href="#poll-<?= $pollId ?>" data-toggle="collapse" class="list-group-item-heading" style="display: block; color: inherit; text-decoration: none; margin-bottom: 0;">
+                                <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
                                     <i class="fa fa-bar-chart fa-fw" style="margin-right: 5px;"></i> Poll: <?= Html::encode($poll['question']) ?>
-                                     <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
-                                </a>
-                                <div id="poll-<?= $pollId ?>" class="collapse list-group-item-text" style="margin-top: 10px;">
-                                    <ul class="list-unstyled" style="margin-left: 20px;">
+                                </h5>
+                                <div style="margin-top: 10px;">
+                                    <ul class="list-unstyled" style="margin-left: 10px;">
                                         <?php foreach ($poll['options'] as $opt): 
                                             $count = $results[$opt['key']] ?? 0;
                                             $percent = $totalVotes > 0 ? round(($count / $totalVotes) * 100) : 0;
@@ -203,7 +205,31 @@ if (!empty($stream->end_time)) {
                 }
                 ?>
             </div>
-            <?php endif; ?>
+            <?php
+            $sessionDataContent = ob_get_clean();
+            
+            // Render Tabs
+            echo Tabs::widget([
+                'items' => [
+                    [
+                        'label' => 'Downloads',
+                        'content' => $downloadsContent,
+                        'active' => true,
+                    ],
+                    [
+                        'label' => 'Chat Log',
+                        'content' => $chatTabContent,
+                        'visible' => !empty($chatTabContent),
+                    ],
+                    [
+                        'label' => 'Session Data',
+                        'content' => $sessionDataContent,
+                        'visible' => (!empty($stream->reactions) || !empty($stream->polls)),
+                    ],
+                ],
+            ]);
+            ?>
+
         </div>
         <div class="modal-footer">
             <?= ModalButton::cancel('Close') ?>

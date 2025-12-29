@@ -217,8 +217,19 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException();
         }
 
+        $chatLogContent = null;
+        if (!empty($stream->chat_log_url)) {
+            // Fetch chat log with a 3-second timeout to check availability/content
+            $context = stream_context_create(['http' => ['timeout' => 3]]); 
+            $content = @file_get_contents($stream->chat_log_url, false, $context);
+            if ($content !== false) {
+                $chatLogContent = $content;
+            }
+        }
+
         return $this->renderAjax('modal_details', [
-            'stream' => $stream
+            'stream' => $stream,
+            'chatLogContent' => $chatLogContent
         ]);
     }
 
