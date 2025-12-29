@@ -121,6 +121,12 @@ class WebhookController extends Controller
             case 'POLL_ANSWER':
                 $this->handlePollAnswer($roomName, $payload);
                 break;
+            case 'VIDEO_SEGMENT_UPLOADED':
+                $this->handleVideoSegmentUploaded($roomName, $payload);
+                break;
+            case 'SCREEN_SHARING_HISTORY':
+                $this->handleScreenSharingHistory($roomName, $payload);
+                break;
             default:
                 Yii::error("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
@@ -521,6 +527,18 @@ class WebhookController extends Controller
         }
     }
     
+    private function handleVideoSegmentUploaded($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: VIDEO_SEGMENT_UPLOADED (Highlights) for $roomName", 'jitsi-meet-cloud-8x8');
+        $this->updateStreamMetadata($roomName, $payload, 'highlights_url');
+    }
+
+    private function handleScreenSharingHistory($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: SCREEN_SHARING_HISTORY for $roomName", 'jitsi-meet-cloud-8x8');
+        $this->updateStreamMetadata($roomName, $payload, 'screen_sharing_url');
+    }
+
     /**
      * Helper to update simple URL text fields
      */

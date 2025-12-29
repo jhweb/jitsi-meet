@@ -56,8 +56,8 @@ if (!empty($stream->end_time)) {
                 <?php if (!empty($stream->recording_url)): ?>
                     <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-video-camera fa-fw" style="margin-right: 10px;"></i> 
-                        Watch Video Recording
-                        <span class="pull-right"><i class="fa fa-external-link"></i></span>
+                        Download Video Recording
+                        <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endif; ?>
                 <?php if (!empty($stream->transcription_url)): ?>
@@ -125,7 +125,63 @@ if (!empty($stream->end_time)) {
                  $chatTabContent .= '</div>';
             }
 
-            // 3. Capture Session Data (Polls/Reactions)
+            // 3. Capture Watch Tab Content
+            ob_start();
+            ?>
+            <div style="padding: 15px;">
+                <?php if (!empty($stream->recording_url)): ?>
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Full Recording</h5>
+                        <div class="embed-responsive embed-responsive-16by9" style="background: #000; border-radius: 4px;">
+                            <video class="embed-responsive-item" controls controlsList="nodownload">
+                                <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($stream->highlights_url)): ?>
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Highlights (90s Segment)</h5>
+                        <div class="embed-responsive embed-responsive-16by9" style="background: #000; border-radius: 4px;">
+                            <video class="embed-responsive-item" controls controlsList="nodownload">
+                                <source src="<?= Html::encode($stream->highlights_url) ?>" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($screenSharingContent) && is_array($screenSharingContent)): ?>
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Screen Sharing History</h5>
+                        <div class="row" style="display: flex; flex-wrap: wrap;">
+                        <?php foreach ($screenSharingContent as $scIdx => $scUrl): 
+                             // Defensive check: if $scUrl is an array, try to find 'url' or 'link' key, otherwise ignore
+                             $imgSrc = is_string($scUrl) ? $scUrl : ($scUrl['url'] ?? $scUrl['link'] ?? null);
+                             if (!$imgSrc) continue;
+                        ?>
+                            <div class="col-xs-6 col-md-4" style="margin-bottom: 15px;">
+                                <a href="<?= Html::encode($imgSrc) ?>" target="_blank" class="thumbnail" style="display: block; margin-bottom: 0;">
+                                    <img src="<?= Html::encode($imgSrc) ?>" alt="Screenshot <?= $scIdx + 1 ?>" style="width: 100%; height: auto; display: block;">
+                                </a>
+                            </div>
+                        <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($screenSharingContent)): ?>
+                    <div class="text-center text-muted" style="padding: 20px;">
+                        No video or screenshots available to watch.
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php
+            $watchTabContent = ob_get_clean();
+
+            // 4. Capture Session Data (Polls/Reactions)
             ob_start();
             ?>
              <div class="list-group">
@@ -243,6 +299,11 @@ if (!empty($stream->end_time)) {
                         'label' => 'Chat Log',
                         'content' => $chatTabContent,
                         'visible' => !empty($chatTabContent),
+                    ],
+                    [
+                        'label' => 'Watch',
+                        'content' => $watchTabContent,
+                        'visible' => (!empty($stream->recording_url) || !empty($stream->highlights_url) || !empty($screenSharingContent)),
                     ],
                     [
                         'label' => 'Session Data',

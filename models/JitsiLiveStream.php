@@ -48,7 +48,7 @@ class JitsiLiveStream extends ActiveRecord
             [['status', 'creator_id', 'participant_count', 'active_count'], 'integer'],
             [['start_time', 'end_time', 'created_at', 'updated_at'], 'safe'],
             [['room_name', 'session_id', 'stream_url', 'event_id'], 'string', 'max' => 255],
-            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions'], 'safe'],
+            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions', 'highlights_url', 'screen_sharing_url'], 'safe'],
             [['event_id'], 'unique'],
         ];
     }
@@ -73,6 +73,8 @@ class JitsiLiveStream extends ActiveRecord
             'chat_log_url' => 'Chat Log',
             'file_urls' => 'Files',
             'reactions' => 'Reactions',
+            'highlights_url' => 'Highlights',
+            'screen_sharing_url' => 'Screen Sharing History',
             'event_id' => 'Event ID',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',

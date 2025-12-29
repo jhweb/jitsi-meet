@@ -227,9 +227,19 @@ class RoomController extends Controller
             }
         }
 
+        $screenSharingContent = [];
+        if (!empty($stream->screen_sharing_url)) {
+            $context = stream_context_create(['http' => ['timeout' => 3]]);
+            $content = @file_get_contents($stream->screen_sharing_url, false, $context);
+            if ($content !== false) {
+                $screenSharingContent = json_decode($content, true);
+            }
+        }
+
         return $this->renderAjax('modal_details', [
             'stream' => $stream,
-            'chatLogContent' => $chatLogContent
+            'chatLogContent' => $chatLogContent,
+            'screenSharingContent' => $screenSharingContent
         ]);
     }
 
