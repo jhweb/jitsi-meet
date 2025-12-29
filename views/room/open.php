@@ -19,7 +19,7 @@ use yii\helpers\Url;
             var modal = modalModule.get("jitsiMeet-modal");
             modal.load("<?= Url::to($jitsiRoomUrl); ?>");
             modal.$.on('hidden.bs.modal', function (e) {
-                window.location = "<?= Url::home() ?>";
+                window.location = "<?= Url::to(['/jitsi-meet-cloud-8x8/room/index']) ?>";
             });
         });
     </script>
