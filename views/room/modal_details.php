@@ -42,16 +42,17 @@ if (!empty($stream->end_time)) {
 
             <hr>
 
+            <!-- Downloads Section -->
+            <h5 style="margin-top: 5px; margin-bottom: 5px; color: #999; text-transform: uppercase; font-size: 11px; font-weight: bold;">Downloads</h5>
             <div class="list-group">
                 <?php 
                 $isExpired = ($expirationTime && time() >= $expirationTime);
                 $disabledStyle = $isExpired ? 'pointer-events: none; opacity: 0.5; background-color: #f5f5f5;' : '';
                 ?>
-
                 <!-- Watch Video -->
                 <?php if (!empty($stream->recording_url)): ?>
                     <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-video-camera" style="margin-right: 10px;"></i> 
+                        <i class="fa fa-video-camera fa-fw" style="margin-right: 10px;"></i> 
                         Watch Video Recording
                         <span class="pull-right"><i class="fa fa-external-link"></i></span>
                     </a>
@@ -60,7 +61,7 @@ if (!empty($stream->end_time)) {
                 <!-- Transcript -->
                 <?php if (!empty($stream->transcription_url)): ?>
                     <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-file-text-o" style="margin-right: 10px;"></i>
+                        <i class="fa fa-file-text-o fa-fw" style="margin-right: 10px;"></i>
                         Download Transcript
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
@@ -69,7 +70,7 @@ if (!empty($stream->end_time)) {
                 <!-- Chat Log -->
                 <?php if (!empty($stream->chat_log_url)): ?>
                     <a href="<?= Html::encode($stream->chat_log_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-comments-o" style="margin-right: 10px;"></i>
+                        <i class="fa fa-comments-o fa-fw" style="margin-right: 10px;"></i>
                         Download Chat Log
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
@@ -82,21 +83,31 @@ if (!empty($stream->end_time)) {
                     foreach($files as $index => $fileUrl):
                 ?>
                     <a href="<?= Html::encode($fileUrl) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-file-o" style="margin-right: 10px;"></i>
+                        <i class="fa fa-file-o fa-fw" style="margin-right: 10px;"></i>
                         Download File <?= $index + 1 ?>
                         <span class="pull-right"><i class="fa fa-download"></i></span>
                     </a>
                 <?php endforeach; endif; ?>
+            
+                <?php if (empty($stream->recording_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files)): ?>
+                    <div class="text-center text-muted" style="padding: 10px; font-size: 12px; border: 1px dashed #ddd; background: #fafafa;">
+                        No downloads available.
+                    </div>
+                <?php endif; ?>
+            </div>
 
+            <!-- Session Data Section -->
+            <?php if (!empty($stream->reactions) || !empty($stream->polls)): ?>
+            <h5 style="margin-top: 15px; margin-bottom: 5px; color: #999; text-transform: uppercase; font-size: 11px; font-weight: bold;">Session Data</h5>
+            <div class="list-group">
+                
                 <!-- Reactions -->
                 <?php if (!empty($stream->reactions)): ?>
                      <div class="list-group-item">
-                        <div style="cursor: pointer;" data-toggle="collapse" data-target="#reactions-list">
-                            <h5 class="list-group-item-heading" style="margin-bottom: 0;">
-                                <i class="fa fa-smile-o fa-fw" style="margin-right: 5px;"></i> Reactions
-                                <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
-                            </h5>
-                        </div>
+                        <a href="#reactions-list" data-toggle="collapse" class="list-group-item-heading" style="display: block; color: inherit; text-decoration: none; margin-bottom: 0;">
+                             <i class="fa fa-smile-o fa-fw" style="margin-right: 5px;"></i> Reactions
+                             <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
+                        </a>
                         <div id="reactions-list" class="collapse list-group-item-text" style="margin-top: 10px;">
                         <?php 
                             $reactionsData = json_decode($stream->reactions, true);
@@ -106,7 +117,6 @@ if (!empty($stream->end_time)) {
                                 <?php foreach ($reactionsData as $reaction): ?>
                                     <?php 
                                         $emoji = '🙂';
-                                        // Map 8x8 reactions to emojis or icons
                                         switch ($reaction['reaction'] ?? '') {
                                             case 'like': $emoji = '👍'; break;
                                             case 'thumbsup': $emoji = '👍'; break;
@@ -148,11 +158,9 @@ if (!empty($stream->end_time)) {
                             // Calculate Results
                             $results = [];
                             $totalVotes = 0;
-                            // Initialize counts
                             foreach ($poll['options'] as $opt) {
                                 $results[$opt['key']] = 0;
                             }
-                            // Tally votes
                             if (isset($poll['votes'])) {
                                 foreach ($poll['votes'] as $voterId => $vote) {
                                     foreach ($vote['keys'] as $k) {
@@ -168,12 +176,10 @@ if (!empty($stream->end_time)) {
                             }
                             ?>
                             <div class="list-group-item">
-                                <div style="cursor: pointer;" data-toggle="collapse" data-target="#poll-<?= $pollId ?>">
-                                    <h5 class="list-group-item-heading" style="margin-bottom: 0;">
-                                        <i class="fa fa-bar-chart fa-fw" style="margin-right: 5px;"></i> Poll: <?= Html::encode($poll['question']) ?>
-                                         <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
-                                    </h5>
-                                </div>
+                                <a href="#poll-<?= $pollId ?>" data-toggle="collapse" class="list-group-item-heading" style="display: block; color: inherit; text-decoration: none; margin-bottom: 0;">
+                                    <i class="fa fa-bar-chart fa-fw" style="margin-right: 5px;"></i> Poll: <?= Html::encode($poll['question']) ?>
+                                     <span class="pull-right"><i class="fa fa-chevron-down"></i></span>
+                                </a>
                                 <div id="poll-<?= $pollId ?>" class="collapse list-group-item-text" style="margin-top: 10px;">
                                     <ul class="list-unstyled" style="margin-left: 20px;">
                                         <?php foreach ($poll['options'] as $opt): 
@@ -196,16 +202,8 @@ if (!empty($stream->end_time)) {
                      }
                 }
                 ?>
-
-
-                 <?php if (empty($stream->recording_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files)): ?>
-                    <div class="text-center text-muted" style="padding: 20px;">
-                        No downloads available for this stream.
-                    </div>
-                 <?php endif; ?>
-
             </div>
-
+            <?php endif; ?>
         </div>
         <div class="modal-footer">
             <?= ModalButton::cancel('Close') ?>
