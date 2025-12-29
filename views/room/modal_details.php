@@ -97,8 +97,31 @@ if (!empty($stream->end_time)) {
             // 2. Capture Chat Log Content
             $chatTabContent = '';
             if (!empty($chatLogContent)) {
-                 $chatTabContent = '<div style="max-height: 400px; overflow-y: auto; background: #f9f9f9; padding: 10px; border: 1px solid #eee;">';
-                 $chatTabContent .= '<pre style="white-space: pre-wrap; word-wrap: break-word; background: transparent; border: none;">' . Html::encode($chatLogContent) . '</pre>';
+                 $chatData = json_decode($chatLogContent, true);
+                 $messages = $chatData['messages'] ?? [];
+                 
+                 $chatTabContent = '<div style="max-height: 400px; overflow-y: auto; background: #f9f9f9; padding: 15px; border: 1px solid #eee; border-radius: 4px;">';
+                 
+                 if (!empty($messages) && is_array($messages)) {
+                     $chatTabContent .= '<ul class="media-list">';
+                     foreach ($messages as $msg) {
+                         $name = Html::encode($msg['name'] ?? 'Unknown');
+                         $text = Html::encode($msg['content'] ?? '');
+                         $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime($msg['timestamp'] / 1000) : ''; // 8x8 uses ms timestamps? Check logic.
+                         // Sometimes timestamp is ISO string or ms. 8x8 usually uses ms integers in these logs based on previous samples.
+                         
+                         $chatTabContent .= '<li class="media" style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">';
+                         $chatTabContent .= '<div class="media-body">';
+                         $chatTabContent .= '<h6 class="media-heading" style="font-weight: bold; color: #555;">' . $name . ' <small class="pull-right text-muted">' . $time . '</small></h6>';
+                         $chatTabContent .= '<p style="margin: 0;">' . $text . '</p>';
+                         $chatTabContent .= '</div>';
+                         $chatTabContent .= '</li>';
+                     }
+                     $chatTabContent .= '</ul>';
+                 } else {
+                     // Fallback if parsing fails or structure differs
+                     $chatTabContent .= '<pre style="white-space: pre-wrap; word-wrap: break-word; background: transparent; border: none;">' . Html::encode($chatLogContent) . '</pre>';
+                 }
                  $chatTabContent .= '</div>';
             }
 
