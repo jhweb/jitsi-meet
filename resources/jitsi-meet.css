@@ -57,7 +57,8 @@
 }
 
 .stream-card {
-    background-color: #1a1a1a;
+    background-color: #fff;
+    /* Default to white for Light Theme consistency */
     border-radius: 4px;
     padding: 20px;
     position: relative;
@@ -65,6 +66,33 @@
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure Dark Theme keeps dark cards if body has dark class OR rely on media query if not */
+body.theme-dark .stream-card,
+body.dark-mode .stream-card,
+[data-theme='dark'] .stream-card {
+    background-color: #1a1a1a;
+    box-shadow: none;
+    color: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    /* Fallback for system dark mode if theme usually respects it */
+    .stream-card {
+        background-color: #1a1a1a;
+        color: #fff;
+    }
+
+    .stream-title {
+        color: #fff;
+    }
+
+    .stream-info {
+        color: #aaa;
+    }
 }
 
 .stream-card.live {
@@ -109,9 +137,34 @@
 }
 
 .stream-title {
-    color: #fff;
+    color: #333;
+    /* Default dark text for light card */
     font-size: 16px;
     margin-bottom: 5px;
+}
+
+/* Override for dark card contexts */
+body.theme-dark .stream-title,
+body.dark-mode .stream-title,
+[data-theme='dark'] .stream-title,
+.stream-card[style*="background-color: #1a1a1a"] .stream-title,
+.stream-card.live .stream-title,
+/* Live probably still dark border? */
+.stream-card.ended .stream-title {
+    /* Actually, if the card is white, the title should be dark.
+        If the card is dark (via media query or class), title is white.
+     */
+}
+
+/* Force white title in known dark contexts or media query */
+@media (prefers-color-scheme: dark) {
+    .stream-title {
+        color: #fff;
+    }
+}
+
+body.theme-dark .stream-title {
+    color: #fff;
 }
 
 .stream-card.processing {
@@ -164,16 +217,22 @@
     position: absolute;
     right: 15px;
     top: 15px;
-    opacity: 0.7;
     text-shadow: none;
     color: #fff;
-    /* Default for dark headers, might need override if header is light */
+    /* White X */
+    background-color: #738f3b;
+    /* Dark Green Background */
+    border-radius: 4px;
+    padding: 2px 6px;
+    opacity: 1;
+    /* Always visible */
     z-index: 1000;
 }
 
 .modal-header .close:hover {
-    opacity: 1;
+    opacity: 0.8;
     color: #fff;
+    background-color: #647d34;
 }
 
 /* Light Theme / Modal Content Styles */
@@ -201,6 +260,62 @@
 .jitsi-stream-details .list-group-item .fa {
     /* Ensure icons match text color or keep specific */
     color: inherit;
+}
+
+/* Chat Log Styling */
+.chat-log-container {
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: #1a1a1a;
+    /* Dark background for chat log */
+    padding: 15px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #eee;
+}
+
+.chat-log-list .media {
+    border-bottom: 1px solid #333;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    background-color: transparent;
+    transition: background-color 0.2s;
+}
+
+.chat-log-list .media:hover {
+    background-color: #738f3b;
+    /* Dark Green on Hover */
+    cursor: default;
+}
+
+.chat-log-list .media-heading {
+    font-weight: bold;
+    color: #fff;
+    /* Name color */
+}
+
+.chat-log-list .media:hover .media-heading,
+.chat-log-list .media:hover .content,
+.chat-log-list .media:hover small {
+    color: #fff !important;
+}
+
+.chat-log-list .content {
+    margin: 0;
+    color: #ccc;
+}
+
+.chat-log-list small.date {
+    color: #999;
+}
+
+.chat-log-raw {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: transparent;
+    border: none;
+    color: #eee;
 }
 
 /* Empty slots for visual grid if needed, or just let grid handle it */
