@@ -76,6 +76,17 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         }
                     }
 
+                    // Check for data availability (icons)
+                    $hasRecording = ($stream->has_recording || !empty($stream->recording_url));
+                    $hasHighlights = !empty($stream->highlights_url);
+                    $hasChat = !empty($stream->chat_log_url);
+                    $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions));
+                    $hasTranscript = !empty($stream->transcription_url);
+                    $hasExtraFiles = !empty($stream->file_urls);
+
+                    // Show button if any data/icon is "active"
+                    // User request: "if no data to download or display see icons, then download files button should become hidden"
+                    $showDownloadButton = ($hasRecording || $hasHighlights || $hasChat || $hasSessionData || $hasTranscript || $hasExtraFiles);
                 ?>
                 <div class="stream-card ended">
                     <div class="stream-badge">ENDED LIVE</div>
@@ -105,22 +116,23 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     
                     <div class="stream-indicators">
                         <!-- Video Recording -->
-                        <i class="fa fa-video-camera indicator-icon <?= ($stream->has_recording || !empty($stream->recording_url)) ? 'active' : '' ?>" title="Video Recording"></i>
+                        <i class="fa fa-video-camera indicator-icon <?= $hasRecording ? 'active' : '' ?>" title="Video Recording"></i>
                         
                         <!-- Highlights -->
-                        <i class="fa fa-film indicator-icon <?= (!empty($stream->highlights_url)) ? 'active' : '' ?>" title="Highlights"></i>
+                        <i class="fa fa-film indicator-icon <?= $hasHighlights ? 'active' : '' ?>" title="Highlights"></i>
                         
                         <!-- Chat Log -->
-                        <i class="fa fa-comments indicator-icon <?= (!empty($stream->chat_log_url)) ? 'active' : '' ?>" title="Chat Log"></i>
+                        <i class="fa fa-comments indicator-icon <?= $hasChat ? 'active' : '' ?>" title="Chat Log"></i>
                         
                         <!-- Session Data -->
-                        <i class="fa fa-bar-chart indicator-icon <?= (($stream->participant_count > 1) || !empty($stream->reactions)) ? 'active' : '' ?>" title="Session Data"></i>
+                        <i class="fa fa-bar-chart indicator-icon <?= $hasSessionData ? 'active' : '' ?>" title="Session Data"></i>
                         
                         <!-- Transcript -->
-                        <i class="fa fa-file-text-o indicator-icon <?= (!empty($stream->transcription_url)) ? 'active' : '' ?>" title="Transcript"></i>
+                        <i class="fa fa-file-text-o indicator-icon <?= $hasTranscript ? 'active' : '' ?>" title="Transcript"></i>
                     </div>
                     
                     
+                    <?php if ($showDownloadButton): ?>
                     <?= ModalButton::primary('DOWNLOAD FILES')
                         ->load(Url::to(['details', 'id' => $stream->id]))
                         ->cssClass('btn btn-default btn-stream-replay')
@@ -128,6 +140,9 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                             'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
                         ]) 
                     ?>
+                    <?php else: ?>
+                    <div style="height: 32px;"></div> <!-- Spacer to keep card height consistent if needed, or remove -->
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
 
