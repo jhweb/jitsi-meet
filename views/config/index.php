@@ -25,6 +25,7 @@ $(document).ready(function () {
             $('.field-settingsform-jaasappid').show();
             $('.field-settingsform-jaaskid').show();
             $('.field-settingsform-jaasprivatekeypath').show();
+            $('.field-settingsform-jaaswebhooksecret').show();
             $('.field-settingsform-jaasdomain').show();
             $('.field-settingsform-jaasenablerecording').show();
             $('.field-settingsform-jaasenablelivestreaming').show();
@@ -33,6 +34,7 @@ $(document).ready(function () {
             $('.field-settingsform-jaasappid').hide();
             $('.field-settingsform-jaaskid').hide();
             $('.field-settingsform-jaasprivatekeypath').hide();
+            $('.field-settingsform-jaaswebhooksecret').hide();
             $('.field-settingsform-jaasdomain').hide();
             $('.field-settingsform-jaasenablerecording').hide();
             $('.field-settingsform-jaasenablelivestreaming').hide();
@@ -96,6 +98,7 @@ $this->registerJs($script);
         <?= $form->field($model, 'jaasAppId'); ?>
         <?= $form->field($model, 'jaasKid'); ?>
         <?= $form->field($model, 'jaasPrivateKeyPath'); ?>
+        <?= $form->field($model, 'jaasWebhookSecret'); ?>
         <?= $form->field($model, 'jaasDomain'); ?>
         <?= $form->field($model, 'jaasEnableRecording')->checkbox(); ?>
         <?= $form->field($model, 'jaasEnableLivestreaming')->checkbox(); ?>

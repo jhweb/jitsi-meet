@@ -27,6 +27,7 @@ class SettingsForm extends Model
     public $jaasAppId; // sub
     public $jaasKid; // kid
     public $jaasPrivateKeyPath; // filesystem path to RS256 private key
+    public $jaasWebhookSecret; // Secret for verifying webhook signatures
     public $jaasDomain; // usually 8x8.vc
     public $jaasEnableRecording;
     public $jaasEnableLivestreaming;
@@ -61,7 +62,7 @@ class SettingsForm extends Model
                 return $('#settingsform-enablejwt').is(':checked');
             }"],
             [['mode'], 'in', 'range' => ['self_hosted', 'jaas']],
-            [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath', 'jaasDomain'], 'string'],
+            [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath', 'jaasDomain', 'jaasWebhookSecret'], 'string'],
             [['jaasEnableRecording', 'jaasEnableLivestreaming', 'jaasEnableModeration'], 'boolean'],
             [['defaultRecordingEnabled', 'defaultLivestreamingEnabled', 'defaultModerationEnabled'], 'boolean'],
             [['enableLiveStreamWidget'], 'boolean'],
@@ -150,6 +151,7 @@ class SettingsForm extends Model
             'jaasAppId' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS App ID (sub).'),
             'jaasKid' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS API Key (kid).'),
             'jaasPrivateKeyPath' => Yii::t('JitsiMeetCloud8x8Module.base', 'Filesystem path to the RS256 private key (not stored in DB).'),
+            'jaasWebhookSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Secret from 8x8 Console for signature verification.'),
             'jaasDomain' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS domain, default: 8x8.vc'),
             'jaasEnableRecording' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable recording feature for JaaS users.'),
             'jaasEnableLivestreaming' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable livestreaming feature for JaaS users.'),
@@ -220,6 +222,11 @@ class SettingsForm extends Model
             $this->jaasPrivateKeyPath = '';
         }
 
+        $this->jaasWebhookSecret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
+        if (empty($this->jaasWebhookSecret)) {
+            $this->jaasWebhookSecret = '';
+        }
+
         $this->jaasDomain = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasDomain');
         if (empty($this->jaasDomain)) {
             $this->jaasDomain = '8x8.vc';
@@ -257,6 +264,8 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasAppId', $this->jaasAppId);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasKid', $this->jaasKid);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasPrivateKeyPath', $this->jaasPrivateKeyPath);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasWebhookSecret', $this->jaasWebhookSecret);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableRecording', (int)$this->jaasEnableRecording);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableLivestreaming', (int)$this->jaasEnableLivestreaming);

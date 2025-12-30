@@ -54,9 +54,16 @@ class WebhookController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $rawBody = Yii::$app->request->getRawBody();
-        // Force log raw body to ensure we see what we get
-        Yii::error("Jitsi Webhook RAW BODY: " . $rawBody, 'jitsi-meet-cloud-8x8');
+        // Log raw body only in debug mode
+        Yii::debug("Jitsi Webhook RAW BODY: " . $rawBody, 'jitsi-meet-cloud-8x8');
         
+        // 1. Verify Signature
+        if (!$this->verifySignature($rawBody)) {
+            Yii::warning("Jitsi Webhook: Signature verification failed.", 'jitsi-meet-cloud-8x8');
+            Yii::$app->response->statusCode = 401;
+            return ['status' => 'error', 'message' => 'Unauthorized'];
+        }
+
         $payload = json_decode($rawBody, true);
 
         if (!$payload || !isset($payload['eventType'])) {
@@ -72,7 +79,7 @@ class WebhookController extends Controller
         $parts = explode('/', $fqn);
         $roomName = end($parts);
         
-        Yii::error("Jitsi Webhook Processing: Type=[$eventType] Room=[$roomName]", 'jitsi-meet-cloud-8x8');
+        Yii::info("Jitsi Webhook Processing: Type=[$eventType] Room=[$roomName]", 'jitsi-meet-cloud-8x8');
 
         switch ($eventType) {
             case 'ROOM_CREATED':
@@ -130,11 +137,81 @@ class WebhookController extends Controller
                 $this->handleScreenSharingHistory($roomName, $payload);
                 break;
             default:
-                Yii::error("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
+                Yii::info("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
         }
 
         return ['status' => 'success'];
+    }
+
+    private function verifySignature($rawBody)
+    {
+        $signatureHeader = Yii::$app->request->headers->get('x-jaas-signature');
+        
+        // Fail if header is missing
+        if (!$signatureHeader) {
+             Yii::warning("Jitsi Webhook: Missing X-Jaas-Signature header", 'jitsi-meet-cloud-8x8');
+             // Optionally allow if no secret is configured (transition period), BUT user requested security.
+             // We will check if secret is configured.
+             $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
+             if (empty($secret)) {
+                 Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
+                 return true;
+             }
+             return false;
+        }
+
+        $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
+        if (empty($secret)) {
+            Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
+            return true; 
+        }
+
+        // Parse Header
+        // Format: t=TIMESTAMP,v1=SIGNATURE
+        $parts = explode(',', $signatureHeader);
+        $timestamp = null;
+        $signature = null;
+
+        foreach ($parts as $part) {
+            if (strpos($part, 't=') === 0) {
+                $timestamp = substr($part, 2);
+            } elseif (strpos($part, 'v1=') === 0) {
+                $signature = substr($part, 3);
+            }
+        }
+
+        if (!$timestamp || !$signature) {
+            Yii::warning("Jitsi Webhook: Invalid Signature Header format: $signatureHeader", 'jitsi-meet-cloud-8x8');
+            return false;
+        }
+
+        // 1. Prevent Replay Attacks (5 minute window)
+        // Note: 8x8 timestamp is in seconds (or ms? Docs say "t=1632490060" which looks like seconds)
+        // Docs Example: t=1632490060.
+        // Payload timestamp: 1632490058278 (ms).
+        // Header 't' is likely seconds.
+        $now = time();
+        if (abs($now - $timestamp) > 300) {
+             Yii::warning("Jitsi Webhook: Replay attack detected or clock drift. timestamp=$timestamp, now=$now", 'jitsi-meet-cloud-8x8');
+             return false;
+        }
+
+        // 2. Prepare Signed Payload
+        // "the timestamp obtained from the header... (as a string) + the character . + the actual JSON payload"
+        $signedPayload = $timestamp . '.' . $rawBody;
+
+        // 3. Compute Expected Signature
+        // "HMAC with SHA256... encode result using base64"
+        $expectedSignature = base64_encode(hash_hmac('sha256', $signedPayload, $secret, true));
+
+        // 4. Compare
+        if (hash_equals($expectedSignature, $signature)) {
+            return true;
+        }
+
+        Yii::warning("Jitsi Webhook: Signature mismatch. Expected: $expectedSignature, Got: $signature", 'jitsi-meet-cloud-8x8');
+        return false;
     }
 
     private function handleRoomCreated($roomName, $payload)
@@ -266,7 +343,7 @@ class WebhookController extends Controller
 
     private function handleRecordingUploaded($roomName, $payload)
     {
-        Yii::error("Jitsi Webhook: RECORDING_UPLOADED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
+        Yii::info("Jitsi Webhook: RECORDING_UPLOADED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
 
         $sessionId = $payload['sessionId'] ?? null;
         $data = $payload['data'] ?? [];
@@ -332,7 +409,7 @@ class WebhookController extends Controller
 
     private function handleParticipantJoined($roomName, $payload)
     {
-        Yii::error("Jitsi Webhook: PARTICIPANT_JOINED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
+        Yii::info("Jitsi Webhook: PARTICIPANT_JOINED for $roomName. Payload: " . json_encode($payload), 'jitsi-meet-cloud-8x8');
 
         $sessionId = $payload['sessionId'] ?? null;
         $participantId = $payload['data']['participantId'] ?? $payload['participantId'] ?? null;
