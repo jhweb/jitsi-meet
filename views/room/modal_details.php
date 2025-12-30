@@ -13,7 +13,7 @@ if (!empty($stream->end_time)) {
 ?>
 
 <div class="modal-dialog modal-dialog-medium animated fadeIn">
-    <div class="modal-content">
+    <div class="modal-content jitsi-stream-details">
         <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" data-modal-close aria-hidden="true">&times;</button>
             <h4 class="modal-title" id="myModalLabel">
@@ -23,6 +23,9 @@ if (!empty($stream->end_time)) {
         <div class="modal-body">
             <div class="text-center">
                 <h3><?= Html::encode($stream->title ?: $stream->room_name) ?></h3>
+                <p class="text-muted" style="margin-bottom: 5px;">
+                    <small>Room name: <?= Html::encode($stream->room_name) ?></small>
+                </p>
                 <p class="text-muted">
                     Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
                     <br>

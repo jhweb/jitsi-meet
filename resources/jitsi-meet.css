@@ -159,18 +159,48 @@
 }
 
 /* Modal Close Button Override */
+/* Modal Close Button Override - Absolute Positioning */
 .modal-header .close {
-    float: right;
+    position: absolute;
+    right: 15px;
+    top: 15px;
     opacity: 0.7;
-    padding-left: 2px;
     text-shadow: none;
     color: #fff;
-    /* Ensure visibility in dark mode */
+    /* Default for dark headers, might need override if header is light */
+    z-index: 1000;
 }
 
 .modal-header .close:hover {
     opacity: 1;
     color: #fff;
+}
+
+/* Light Theme / Modal Content Styles */
+.jitsi-stream-details .modal-body h3 {
+    color: #738f3b;
+    /* Dark Green Title */
+    margin-top: 10px;
+}
+
+/* Link Styling in Modal */
+.jitsi-stream-details .list-group-item {
+    color: #738f3b;
+    /* Dark Green Text */
+    font-weight: 500;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.jitsi-stream-details .list-group-item:hover {
+    color: #8cb321 !important;
+    /* Light Green on Hover */
+    background-color: #f9f9f9;
+    /* Slight background highlight */
+}
+
+.jitsi-stream-details .list-group-item .fa {
+    /* Ensure icons match text color or keep specific */
+    color: inherit;
 }
 
 /* Empty slots for visual grid if needed, or just let grid handle it */
