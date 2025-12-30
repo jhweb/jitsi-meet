@@ -22,7 +22,7 @@ if (!empty($stream->end_time)) {
         </div>
         <div class="modal-body">
             <div class="text-center">
-                <h3><?= Html::encode($stream->room_name) ?></h3>
+                <h3><?= Html::encode($stream->title ?: $stream->room_name) ?></h3>
                 <p class="text-muted">
                     Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
                     <br>

@@ -257,6 +257,17 @@ class WebhookController extends Controller
                      // Saving first will generate ID.
                 }
             }
+            
+            // Set Title from Cache
+            $cachedTitle = $cache->get('jitsiMeetCloud8x8:roomTitle:' . strtolower($roomName));
+            if ($cachedTitle) {
+                $stream->title = $cachedTitle;
+            }
+        }
+        
+        // Fallback for title
+        if (empty($stream->title)) {
+             $stream->title = $roomName;
         }
         
         // Ensure Session ID is saved even if record existed

@@ -30,7 +30,15 @@ class RoomController extends Controller
     {
         $model = new JoinRoomForm();
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            return $this->redirect(['open', 'name' => $this->fixRoomName($model->room)]);
+            $rawTitle = $model->room;
+            $fixedName = $this->fixRoomName($rawTitle);
+            
+            // Cache the raw title for Webhook/Stream creation usage
+            // Use lowercase key to match Webhook logic
+            $cacheKey = 'jitsiMeetCloud8x8:roomTitle:' . strtolower($fixedName);
+            Yii::$app->cache->set($cacheKey, $rawTitle, 3600);
+
+            return $this->redirect(['open', 'name' => $fixedName]);
         }
 
         $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;

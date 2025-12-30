@@ -39,7 +39,12 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <div class="stream-card live">
                     <div class="stream-badge">LIVE</div>
                     
-                    <div class="stream-title"><?= Html::encode($stream->room_name) ?></div>
+                    <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->title ?: $stream->room_name) ?>">
+                        <?= Html::encode($stream->title ?: $stream->room_name) ?>
+                    </div>
+                    <div class="stream-room-name-sub">
+                        Room name: <?= Html::encode($stream->room_name) ?>
+                    </div>
                     <div class="stream-info">
                         <?php if ($stream->creator): ?>
                             <?= Html::encode($stream->creator->displayName) ?>
@@ -75,13 +80,19 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <div class="stream-card ended">
                     <div class="stream-badge">ENDED LIVE</div>
                     
-                    <div class="stream-title"><?= Html::encode($stream->room_name) ?></div>
                     <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
                         <?php if ($stream->creator): ?>
                             <?= Html::encode($stream->creator->displayName) ?>
                         <?php else: ?>
                             The Oil Press
                         <?php endif; ?>
+                    </div>
+
+                    <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->title ?: $stream->room_name) ?>">
+                        <?= Html::encode($stream->title ?: $stream->room_name) ?>
+                    </div>
+                    <div class="stream-room-name-sub">
+                        Room name: <?= Html::encode($stream->room_name) ?>
                     </div>
 
                     <div class="stream-info">

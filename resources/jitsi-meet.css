@@ -27,7 +27,7 @@
         width: 96% !important;
         max-width: none !important;
     }
-    
+
     .jitsiModal {
         min-height: 80vh !important;
     }
@@ -72,7 +72,7 @@
 }
 
 .stream-card.ended {
-    border: 2px solid #00ff00;
+    border: 2px solid #8cb321;
 }
 
 .stream-badge {
@@ -88,7 +88,24 @@
 }
 
 .stream-card.ended .stream-badge {
-    color: #4da74d; /* Matching Oil Press greenish */
+    color: #8cb321;
+    /* Matching Oil Press greenish */
+}
+
+.stream-title-overflow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.stream-room-name-sub {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stream-title {
@@ -120,6 +137,7 @@
     width: 100%;
     margin-top: 10px;
 }
+
 .btn-stream-live:hover {
     background-color: #ffff00 !important;
     color: #000 !important;
@@ -127,10 +145,32 @@
 
 .btn-stream-replay {
     background-color: transparent !important;
-    border: 1px solid #4da74d !important;
-    color: #4da74d !important;
+    border: 1px solid #8cb321 !important;
+    color: #8cb321 !important;
     width: 100%;
     margin-top: 10px;
+    transition: all 0.2s ease;
+}
+
+.btn-stream-replay:hover {
+    background-color: #FFC107 !important;
+    color: #000000 !important;
+    border-color: #FFC107 !important;
+}
+
+/* Modal Close Button Override */
+.modal-header .close {
+    float: right;
+    opacity: 0.7;
+    padding-left: 2px;
+    text-shadow: none;
+    color: #fff;
+    /* Ensure visibility in dark mode */
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+    color: #fff;
 }
 
 /* Empty slots for visual grid if needed, or just let grid handle it */
