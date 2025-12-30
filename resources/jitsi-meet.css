@@ -136,6 +136,26 @@ body.dark-mode .stream-card,
     text-overflow: ellipsis;
 }
 
+/* Stream Data Indicators */
+.stream-indicators {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.indicator-icon {
+    font-size: 14px;
+    color: #ccc;
+    /* Inactive grey */
+    transition: color 0.3s ease;
+}
+
+.indicator-icon.active {
+    color: #8cb321;
+    /* Theme Green */
+}
+
 .stream-title {
     color: #333;
     /* Default dark text for light card */

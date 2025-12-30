@@ -103,6 +103,23 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                     </div>
                     
+                    <div class="stream-indicators">
+                        <!-- Video Recording -->
+                        <i class="fa fa-video-camera indicator-icon <?= ($stream->has_recording || !empty($stream->recording_url)) ? 'active' : '' ?>" title="Video Recording"></i>
+                        
+                        <!-- Highlights -->
+                        <i class="fa fa-film indicator-icon <?= (!empty($stream->highlights_url)) ? 'active' : '' ?>" title="Highlights"></i>
+                        
+                        <!-- Chat Log -->
+                        <i class="fa fa-comments indicator-icon <?= (!empty($stream->chat_log_url)) ? 'active' : '' ?>" title="Chat Log"></i>
+                        
+                        <!-- Session Data -->
+                        <i class="fa fa-bar-chart indicator-icon <?= (($stream->participant_count > 1) || !empty($stream->reactions)) ? 'active' : '' ?>" title="Session Data"></i>
+                        
+                        <!-- Transcript -->
+                        <i class="fa fa-file-text-o indicator-icon <?= (!empty($stream->transcription_url)) ? 'active' : '' ?>" title="Transcript"></i>
+                    </div>
+                    
                     
                     <?= ModalButton::primary('DOWNLOAD FILES')
                         ->load(Url::to(['details', 'id' => $stream->id]))
