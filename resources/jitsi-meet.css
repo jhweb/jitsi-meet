@@ -262,20 +262,31 @@ body.theme-dark .stream-title {
     color: inherit;
 }
 
-/* Chat Log Styling */
+/* Chat Log Styling - Inherit from Theme by Default */
 .chat-log-container {
     max-height: 400px;
     overflow-y: auto;
-    background-color: #1a1a1a;
-    /* Dark background for chat log */
+    background-color: transparent;
+    /* Allow theme background */
     padding: 15px;
-    border: 1px solid #333;
+    border: 1px solid #dcdcdc;
+    /* Light border by default */
     border-radius: 4px;
+    color: inherit;
+}
+
+/* Enforce Dark Style ONLY for Dark Theme contexts */
+body.theme-dark .chat-log-container,
+body.dark-mode .chat-log-container,
+[data-theme='dark'] .chat-log-container {
+    background-color: #1a1a1a;
+    border-color: #333;
     color: #eee;
 }
 
 .chat-log-list .media {
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #eee;
+    /* Light separator */
     padding: 10px;
     margin-bottom: 5px;
     border-radius: 4px;
@@ -283,32 +294,54 @@ body.theme-dark .stream-title {
     transition: background-color 0.2s;
 }
 
+/* Dark Theme Separator */
+body.theme-dark .chat-log-list .media,
+[data-theme='dark'] .chat-log-list .media {
+    border-bottom-color: #333;
+}
+
+/* Hover Effect: Light Green BG, Black Text (Universal) */
 .chat-log-list .media:hover {
-    background-color: #738f3b;
-    /* Dark Green on Hover */
+    background-color: #8cb321 !important;
+    /* light green */
+    color: #000000 !important;
     cursor: default;
 }
 
 .chat-log-list .media-heading {
     font-weight: bold;
-    color: #fff;
-    /* Name color */
+    color: inherit;
+    /* Inherit from container/theme */
 }
 
+/* Force elements to black/dark grey on hover */
 .chat-log-list .media:hover .media-heading,
 .chat-log-list .media:hover .content,
-.chat-log-list .media:hover small {
-    color: #fff !important;
+.chat-log-list .media:hover small,
+.chat-log-list .media:hover small.date {
+    color: #000000 !important;
 }
 
 .chat-log-list .content {
     margin: 0;
-    color: #ccc;
+    color: inherit;
 }
 
 .chat-log-list small.date {
     color: #999;
+    /* Grey date by default */
 }
+
+/* Session Data / Polls Hover Fix */
+.jitsi-stream-details .list-group-item:hover,
+.jitsi-stream-details .list-group-item:hover small,
+.jitsi-stream-details .list-group-item:hover .text-muted {
+    background-color: #8cb321 !important;
+    color: #000000 !important;
+}
+
+/* Ensure progress bars or specific inner elements don't get messed up if needed, 
+   but text should be black on green. */
 
 .chat-log-raw {
     white-space: pre-wrap;
