@@ -96,7 +96,7 @@ class JaasJwtService
                 'user' => [
                     'id' => (string)$user->id,
                     'name' => (string)$user->displayName,
-                    'avatar' => (string)($user->getProfileImage() ? $user->getProfileImage()->getUrl() : ''),
+                    'avatar' => (string)($user->getProfileImage() ? \yii\helpers\Url::to($user->getProfileImage()->getUrl(), true) : ''),
                     'email' => (string)$user->email,
                     // CRITICAL FIX: Use boolean instead of string for moderator
                     'moderator' => (bool)$isModerator,

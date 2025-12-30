@@ -55,6 +55,10 @@ class RoomWidget extends JsWidget
             $user = Yii::$app->user->getIdentity();
             $email = $user->email;
             $name = $user->displayName;
+            $avatar = $user->getProfileImage()->getUrl();
+            $avatar = $avatar ? \yii\helpers\Url::to($avatar, true) : '';
+        } else {
+            $avatar = '';
         }
 
         $data = [
@@ -68,6 +72,7 @@ class RoomWidget extends JsWidget
             'jaasAppId' => $module->getSettingsForm()->jaasAppId,
             'usermail' => $email,
             'userdisplayname' => $name,
+            'useravatar' => $avatar,
             'startSilent' => $this->startSilent
         ];
 

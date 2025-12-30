@@ -161,6 +161,7 @@ class RoomController extends Controller
                 'user' => [
                     'name' => $userName,
                     'email' => $userEmail,
+                    'avatar' => (string)($user->getProfileImage() ? \yii\helpers\Url::to($user->getProfileImage()->getUrl(), true) : ''),
                 ],
             ],
         ];
