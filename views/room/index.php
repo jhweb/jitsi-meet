@@ -6,6 +6,7 @@ use humhub\widgets\ModalButton;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
 use yii\widgets\LinkPager;
+use humhub\modules\user\widgets\Image;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm */
 /* @var $activeStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
@@ -39,6 +40,17 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <div class="stream-card live">
                     <div class="stream-badge">LIVE</div>
                     
+                    <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
+                        <?php if ($stream->creator): ?>
+                            <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
+                                <?= Image::widget(['user' => $stream->creator, 'width' => 20, 'link' => false]) ?>
+                                <span style="margin-left: 5px;"><?= Html::encode($stream->creator->displayName) ?></span>
+                            </a>
+                        <?php else: ?>
+                            The Oil Press
+                        <?php endif; ?>
+                    </div>
+                    
                     <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->title ?: $stream->room_name) ?>">
                         <?= Html::encode($stream->title ?: $stream->room_name) ?>
                     </div>
@@ -46,11 +58,6 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                         Room name: <?= Html::encode($stream->room_name) ?>
                     </div>
                     <div class="stream-info">
-                        <?php if ($stream->creator): ?>
-                            <?= Html::encode($stream->creator->displayName) ?>
-                        <?php else: ?>
-                            The Oil Press
-                        <?php endif; ?>
                         <br>
                         Started: <?= Yii::$app->formatter->asTime($stream->start_time) ?>
                         <br>
@@ -93,7 +100,10 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                     
                     <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
                         <?php if ($stream->creator): ?>
-                            <?= Html::encode($stream->creator->displayName) ?>
+                            <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
+                                <?= Image::widget(['user' => $stream->creator, 'width' => 20, 'link' => false]) ?>
+                                <span style="margin-left: 5px;"><?= Html::encode($stream->creator->displayName) ?></span>
+                            </a>
                         <?php else: ?>
                             The Oil Press
                         <?php endif; ?>
