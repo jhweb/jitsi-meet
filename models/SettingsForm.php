@@ -46,6 +46,9 @@ class SettingsForm extends Model
     // Pagination settings
     public $entriesPerPage;
 
+    // Tour settings
+    public $enableTour;
+
 
     /**
      * @inheritdoc
@@ -68,6 +71,7 @@ class SettingsForm extends Model
             [['enableLiveStreamWidget'], 'boolean'],
             [['liveStreamWidgetTitle', 'liveStreamRoomName'], 'string'],
             [['entriesPerPage'], 'integer', 'min' => 1],
+            [['enableTour'], 'boolean'],
             
             // JaaS mode validation
             [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath'], 'required', 'when' => function($model) {
@@ -162,7 +166,9 @@ class SettingsForm extends Model
             'enableLiveStreamWidget' => Yii::t('JitsiMeetCloud8x8Module.base', 'Show a live stream widget in the dashboard sidebar.'),
             'liveStreamWidgetTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Title of the live stream widget.'),
             'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
+            'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
             'entriesPerPage' => Yii::t('JitsiMeetCloud8x8Module.base', 'Number of entries per page in the ended streams list.'),
+            'enableTour' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable the guided tour for first-time users.'),
         ];
     }
 
@@ -246,6 +252,8 @@ class SettingsForm extends Model
         $this->liveStreamRoomName = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamRoomName', 'Broadcast');
     
         $this->entriesPerPage = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('entriesPerPage', 12);
+        
+        $this->enableTour = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1);
     }
 
     /**
@@ -279,7 +287,9 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableLiveStreamWidget', (int)$this->enableLiveStreamWidget);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamWidgetTitle', $this->liveStreamWidgetTitle);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('entriesPerPage', (int)$this->entriesPerPage);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableTour', (int)$this->enableTour);
 
         $this->roomPrefix = ucwords(preg_replace("/[^A-Za-z0-9]/", '', $this->roomPrefix));
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('roomPrefix', $this->roomPrefix);

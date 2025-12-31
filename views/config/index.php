@@ -120,6 +120,9 @@ $this->registerJs($script);
         <?= $form->field($model, 'liveStreamWidgetTitle'); ?>
         <?= $form->field($model, 'liveStreamRoomName'); ?>
         <?= $form->field($model, 'entriesPerPage')->textInput(['type' => 'number', 'min' => 1]); ?>
+        <hr>
+        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'User Guide') ?></h4>
+        <?= $form->field($model, 'enableTour')->checkbox(); ?>
 
         <div class="form-group">
             <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>

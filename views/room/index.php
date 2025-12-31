@@ -19,8 +19,14 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         <div class="panel panel-default">
             <div class="panel-heading">
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open conference room'); ?>
+                
+                <?php if (Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1)): ?>
+                <button class="btn btn-xs btn-info pull-right" onclick="$(document).trigger('jitsi:startTour'); return false;">
+                    <i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Guide'); ?>
+                </button>
+                <?php endif; ?>
             </div>
-            <div class="panel-body">
+            <div class="panel-body" id="jitsi-join-panel">
                 <?php $form = ActiveForm::begin(['layout' => 'horizontal', 'id' => 'jrform']); ?>
 
                 <?= $form->field($model, 'room'); ?>
@@ -34,7 +40,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         
         <!-- Live Streams Grid -->
         <div class="live-stream-section">
-            <div class="live-stream-grid">
+            <div class="live-stream-grid" id="jitsi-active-grid">
                 
                 <?php foreach ($activeStreams as $stream): ?>
                 <div class="stream-card live">
@@ -70,6 +76,9 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 </div>
                 <?php endforeach; ?>
 
+            </div>
+
+            <div class="live-stream-grid" id="jitsi-ended-grid" style="margin-top: 20px;">
                 <?php foreach ($endedStreams as $stream): ?>
                 <?php 
                     $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));
@@ -176,6 +185,8 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         
     </div>
 </div>
+
+<?= \humhubContrib\modules\jitsiMeetCloud8x8\widgets\StreamGuide::widget() ?>
 
 <script <?= Html::nonce() ?>>
     $('#jrform').on('beforeSubmit', function(e) {
