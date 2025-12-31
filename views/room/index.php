@@ -21,7 +21,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open conference room'); ?>
                 
                 <?php if (Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1)): ?>
-                <button class="btn btn-xs btn-info pull-right" onclick="$(document).trigger('jitsi:startTour'); return false;">
+                <button id="jitsi-guide-button" class="btn btn-xs btn-info pull-right">
                     <i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Guide'); ?>
                 </button>
                 <?php endif; ?>
