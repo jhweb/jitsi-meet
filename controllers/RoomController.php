@@ -42,16 +42,34 @@ class RoomController extends Controller
         }
 
         $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;
+        
+        // Get active streams first (these always show on page 1)
+        $activeStreams = JitsiLiveStream::find()
+            ->where(['status' => JitsiLiveStream::STATUS_LIVE])
+            ->orderBy(['start_time' => SORT_DESC])
+            ->all();
+        $activeCount = count($activeStreams);
+        
+        // For ended streams, adjust limit on page 1 to account for live streams
         $query = JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED]);
         $countQuery = clone $query;
-        $pages = new \yii\data\Pagination(['totalCount' => $countQuery->count(), 'pageSize' => $entriesPerPage]);
+        $totalEnded = $countQuery->count();
+        
+        $pages = new \yii\data\Pagination(['totalCount' => $totalEnded, 'pageSize' => $entriesPerPage]);
+        
+        // On page 1, reduce limit by active streams count so total = entriesPerPage
+        // On other pages, use full limit (live streams only show on page 1)
+        $endedLimit = $entriesPerPage;
+        if ($pages->page === 0 && $activeCount > 0) {
+            $endedLimit = max(0, $entriesPerPage - $activeCount);
+        }
         
         return $this->render('index', [
             'model' => $model,
             'jitsiDomain' => $this->module->getSettingsForm()->jitsiDomain,
-            'activeStreams' => JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_LIVE])->orderBy(['start_time' => SORT_DESC])->all(),
+            'activeStreams' => $activeStreams,
             'endedStreams' => $query->offset($pages->offset)
-                ->limit($pages->limit)
+                ->limit($endedLimit)
                 ->orderBy(['end_time' => SORT_DESC])
                 ->all(),
             'pages' => $pages

@@ -120,6 +120,50 @@ body.dark-mode .stream-card,
     /* Matching Oil Press greenish */
 }
 
+@keyframes blinkRed {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.pulsating-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: blinkRed 1.5s infinite;
+    vertical-align: middle;
+}
+
+/* Menu item dot - targeted via a specific class we'll add in Events.php */
+.jitsi-menu-live .fa-video-camera {
+    position: relative;
+}
+
+.jitsi-menu-live .fa-video-camera::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    animation: blinkRed 1.5s infinite;
+    border: 1px solid #fff;
+    /* Optional: adds a tiny border to separate from icon */
+}
+
 .stream-title-overflow {
     white-space: nowrap;
     overflow: hidden;
