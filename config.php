@@ -10,6 +10,7 @@ return [
     'namespace' => 'humhubContrib\modules\jitsiMeetCloud8x8',
     'events' => [
         ['class' => TopMenu::class, 'event' => TopMenu::EVENT_INIT, 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onTopMenuInit']],
+        ['class' => \humhub\modules\dashboard\widgets\Sidebar::class, 'event' => \humhub\modules\dashboard\widgets\Sidebar::EVENT_INIT, 'callback' => ['humhubContrib\modules\jitsiMeetCloud8x8\Events', 'onDashboardSidebarInit']],
     ],
     'urlManagerRules' => [
         '/conference/<name>' => 'jitsi-meet-cloud-8x8/room/open',

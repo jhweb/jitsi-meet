@@ -66,4 +66,13 @@ class Events
         $topNav->addEntry(new MenuLink($entryOptions));
     }
 
+    public static function onDashboardSidebarInit($event)
+    {
+        if (Yii::$app->user->isGuest || !Yii::$app->user->can(CanAccess::class)) {
+            return;
+        }
+
+        $event->sender->addWidget(\humhubContrib\modules\jitsiMeetCloud8x8\widgets\LiveStreamWidget::class, [], ['sortOrder' => 0]);
+    }
+
 }
