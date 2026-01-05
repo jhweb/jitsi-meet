@@ -109,7 +109,7 @@ TourAsset::register($this);
                     }
                     
                     var tour = new Tour(tourOptions);
-                    tour.init();
+                    // tour.init(); // Not required for Bootstrap Tourist
                     tour.start();
 
                 } else {
