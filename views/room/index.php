@@ -83,6 +83,12 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                                 <span class="pulsating-dot"></span> LIVE
                             </div>
                             
+                            <?php if (!empty($stream->ytstream_url)): ?>
+                            <a href="<?= Html::encode($stream->ytstream_url) ?>" target="_blank" class="live-yt-icon" style="position: absolute; top: 10px; right: 10px; font-size: 20px; color: #ff0000;" title="Watch on YouTube">
+                                <i class="fa fa-youtube-play"></i>
+                            </a>
+                            <?php endif; ?>
+                            
                             <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
                                 <?php if ($stream->creator): ?>
                                     <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
@@ -143,6 +149,11 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                             </div>
                             
                             <div class="stream-indicators">
+                                <?php if (!empty($stream->ytstream_url)): ?>
+                                    <!-- YouTube Stream (Ended) -->
+                                    <i class="fa fa-youtube-play indicator-icon active" title="YouTube Live Stream" style="color: #ff0000 !important;"></i>
+                                <?php endif; ?>
+                                
                                 <!-- Video Recording -->
                                 <i class="fa fa-video-camera indicator-icon <?= $hasRecording ? 'active' : '' ?>" title="Video Recording"></i>
                                 

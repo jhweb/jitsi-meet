@@ -56,6 +56,15 @@ if (!empty($stream->end_time)) {
                 $isExpired = ($expirationTime && time() >= $expirationTime);
                 $disabledStyle = $isExpired ? 'pointer-events: none; opacity: 0.5; background-color: #f5f5f5;' : '';
                 ?>
+                <!-- YouTube Stream Link (Separate from downloads section header, per user request placed in top area or here at top of list) -->
+                <?php if (!empty($stream->ytstream_url) && !$isExpired): ?>
+                    <a href="<?= Html::encode($stream->ytstream_url) ?>" target="_blank" class="list-group-item" style="color: #333;">
+                         <i class="fa fa-youtube-play fa-fw" style="margin-right: 10px; color: #ff0000;"></i> 
+                         Open on YouTube
+                         <span class="pull-right"><i class="fa fa-external-link"></i></span>
+                    </a>
+                <?php endif; ?>
+
                 <?php if (!empty($stream->recording_url)): ?>
                     <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
                         <i class="fa fa-video-camera fa-fw" style="margin-right: 10px;"></i> 
@@ -310,6 +319,57 @@ if (!empty($stream->end_time)) {
                      }
                 }
                 ?>
+                <?php 
+                // Always try to show Speaker Stats section if we are in this tab, 
+                // or at least if we want to confirm they are missing.
+                // For now, let's show the header and "No stats" if empty, to confirm the UI is working.
+                $hasStats = !empty($stream->speaker_stats);
+                $speakerStats = $hasStats ? json_decode($stream->speaker_stats, true) : [];
+                ?>
+                <div class="list-group-item">
+                    <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
+                        <i class="fa fa-microphone fa-fw" style="margin-right: 5px;"></i> Speaker Stats
+                    </h5>
+                    <div style="margin-top: 10px;">
+                        <?php if (!empty($speakerStats)): 
+                            // Sort by speaking time (descending)
+                            uasort($speakerStats, function($a, $b) {
+                                return ($b['time'] ?? 0) - ($a['time'] ?? 0);
+                            });
+                        ?>
+                        <table class="table table-condensed" style="margin-bottom: 0; font-size: 12px;">
+                            <thead>
+                                <tr>
+                                    <th>Participant</th>
+                                    <th class="text-right">Speaking Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($speakerStats as $stat): 
+                                    $ms = $stat['time'] ?? 0;
+                                    $seconds = floor($ms / 1000);
+                                    $minutes = floor($seconds / 60);
+                                    $seconds = $seconds % 60;
+                                    $durationStr = $minutes . 'm ' . $seconds . 's';
+                                    if ($minutes >= 60) {
+                                        $hours = floor($minutes / 60);
+                                        $minutes = $minutes % 60;
+                                        $durationStr = $hours . 'h ' . $minutes . 'm ' . $seconds . 's';
+                                    }
+                                    $displayName = Html::encode($stat['name'] ?? 'Unknown');
+                                ?>
+                                <tr>
+                                    <td><?= $displayName ?></td>
+                                    <td class="text-right"><?= $durationStr ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php else: ?>
+                            <p class="text-muted">No speaker statistics recorded.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
             <?php
             $sessionDataContent = ob_get_clean();
@@ -335,7 +395,7 @@ if (!empty($stream->end_time)) {
                     [
                         'label' => 'Session Data',
                         'content' => $sessionDataContent,
-                        'visible' => (!empty($stream->reactions) || !empty($stream->polls)),
+                        'visible' => (!empty($stream->reactions) || !empty($stream->polls) || !empty($stream->speaker_stats)),
                     ],
                 ],
             ]);

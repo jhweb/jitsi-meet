@@ -93,8 +93,7 @@ class WebhookController extends Controller
                 $this->handleRecordingUploaded($roomName, $payload);
                 break;
             case 'LIVE_STREAM_STARTED':
-                // Optional: You could allow dual triggers, but usually ROOM_CREATED is the master event for "meeting started"
-                // $this->handleLiveStreamStarted($roomName, $payload); 
+                $this->handleLiveStreamStarted($roomName, $payload); 
                 break;
             case 'LIVE_STREAM_ENDED':
                  $this->handleLiveStreamEnded($roomName, $payload);
@@ -135,6 +134,12 @@ class WebhookController extends Controller
                 break;
             case 'SCREEN_SHARING_HISTORY':
                 $this->handleScreenSharingHistory($roomName, $payload);
+                break;
+            case 'SPEAKER_STATS':
+                $this->handleSpeakerStats($roomName, $payload);
+                break;
+            case 'RTCSTATS_UPLOADED':
+                $this->handleRtcstatsUploaded($roomName, $payload);
                 break;
             default:
                 Yii::info("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
@@ -674,6 +679,81 @@ class WebhookController extends Controller
         $this->updateStreamMetadata($roomName, $payload, 'screen_sharing_url');
     }
 
+    private function handleSpeakerStats($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: SPEAKER_STATS for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $data = $payload['data'] ?? [];
+
+        if (empty($data)) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $stream->speaker_stats = json_encode($data);
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Saved SPEAKER_STATS for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            } else {
+                 Yii::error("Jitsi Webhook: Failed to save SPEAKER_STATS. Errors: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            }
+        }
+    }
+
+    private function handleRtcstatsUploaded($roomName, $payload)
+    {
+         Yii::info("Jitsi Webhook: RTCSTATS_UPLOADED for $roomName", 'jitsi-meet-cloud-8x8');
+         $this->updateStreamMetadata($roomName, $payload, 'rtcstats_url');
+    }
+    
+    private function handleLiveStreamStarted($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: LIVE_STREAM_STARTED for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        
+        // Try to find the stream or create if missing (though usually ROOM_CREATED exists)
+        $stream = $this->findStream($roomName, $sessionId);
+        
+        // If not found, we should probably create it, or wait for ROOM_CREATED?
+        // Usually Live Stream started happens inside a meeting.
+        if (!$stream) {
+             $stream = new JitsiLiveStream();
+             $stream->room_name = $roomName;
+             $stream->session_id = $sessionId;
+             $stream->start_time = date('Y-m-d H:i:s', ($payload['timestamp'] ?? time() * 1000) / 1000);
+             $stream->status = JitsiLiveStream::STATUS_LIVE;
+             if (!$stream->save()) {
+                  Yii::error("Jitsi Webhook: Failed to create stream on LIVE_STREAM_STARTED. Errors: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+                  return;
+             }
+        } else {
+             // Update status to LIVE if not already
+             if ($stream->status != JitsiLiveStream::STATUS_LIVE) {
+                 $stream->status = JitsiLiveStream::STATUS_LIVE;
+                 $stream->save();
+             }
+        }
+
+        // Try to extract YouTube URL
+        // Docs don't specify where the URL is, but typically it might be in 'data'
+        $data = $payload['data'] ?? [];
+        
+        // Common 8x8/Jitsi patterns for broadcast URL
+        $broadcastUrl = $data['streamUrl'] 
+                     ?? $data['broadcastUrl'] 
+                     ?? $data['url']
+                     ?? null;
+                     
+        if ($broadcastUrl) {
+            $stream->ytstream_url = $broadcastUrl;
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Saved ytstream_url: $broadcastUrl", 'jitsi-meet-cloud-8x8');
+            }
+        } else {
+             Yii::warning("Jitsi Webhook: LIVE_STREAM_STARTED but no stream URL found in payload. content=" . json_encode($data), 'jitsi-meet-cloud-8x8');
+        }
+    }
+
     /**
      * Helper to update simple URL text fields
      */
@@ -688,6 +768,7 @@ class WebhookController extends Controller
              ?? $data['chatLogUrl'] 
              ?? $data['transcriptionUrl'] 
              ?? $data['fileUrl'] 
+             ?? $data['statsUrl']
              ?? null;
 
         if (!$link) {
