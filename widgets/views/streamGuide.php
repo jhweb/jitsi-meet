@@ -10,23 +10,21 @@ use humhub\modules\tour\assets\TourAsset;
 TourAsset::register($this);
 
 ?>
-<!-- Jitsi StreamGuide Widget (Driver.js API for HumHub 1.17+) -->
+<!-- Jitsi StreamGuide Widget (Universal: Bootstrap Tour + Driver.js) -->
 <script <?= Html::nonce() ?>>
 (function($){
-    console.log('[JitsiGuide] Script Loaded');
-
     $(document).one('humhub:ready', function () {
-        console.log('[JitsiGuide] HumHub Ready');
+        var log = humhub.require('log');
         
         var tourId = 'jitsi-stream-guide';
         var storageKey = 'humhub.jitsi.tour.seen';
         var forceStartUrl = <?= $forceStart ? 'true' : 'false' ?>;
 
         var startStreamTour = function (force) {
-            console.log('[JitsiGuide] startStreamTour called. Force:', force);
+            log.debug('[JitsiGuide] startStreamTour called. Force: ' + force);
             
             if (!force && !forceStartUrl && localStorage.getItem(storageKey)) {
-                console.log('[JitsiGuide] Tour already seen, skipping.');
+                log.debug('[JitsiGuide] Tour already seen, skipping.');
                 return;
             }
 
@@ -34,76 +32,109 @@ TourAsset::register($this);
                 var tourModule = humhub.require('tour');
                 
                 if (!tourModule || typeof tourModule.start !== 'function') {
-                    console.error('[JitsiGuide] Tour module not available.');
+                    log.error('[JitsiGuide] Tour module not available.');
                     return;
                 }
-                
-                console.log('[JitsiGuide] Starting tour with Driver.js API...');
 
-                // CRITICAL: Prevent redirect to dashboard after tour ends
-                // The HumHub wrapper redirects to dashboardUrl when tour completes
-                // We set it to current page URL to stay on this page
+                // Patch Dashboard URL for both versions to prevent redirect
                 if (tourModule.config) {
-                    tourModule.config.dashboardUrl = window.location.href;
-                    console.log('[JitsiGuide] Patched dashboardUrl to stay on current page');
+                    tourModule.config.dashboardUrl = window.location.href; // Stay on page
+                    tourModule.config.completedUrl = '#'; // Prevent server 500
+                    log.debug('[JitsiGuide] Patched config (dashboardUrl, completedUrl).');
                 }
 
-                // HumHub 1.17+ (beta) Driver.js API format
-                tourModule.start({
-                    tourId: tourId,
-                    nextUrl: '', // Empty to prevent redirect after tour
-                    driverJs: {
-                        showProgress: true,
-                        showButtons: ['next', 'previous', 'close'],
-                        steps: [
-                            {
-                                popover: {
-                                    title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Welcome to Live Stream')) ?>,
-                                    description: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Here you can join active meetings, start your own, or watch past recordings.')) ?>
-                                }
-                            },
-                            {
-                                element: '#jitsi-join-panel',
-                                popover: {
-                                    title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Join or Create a Room')) ?>,
-                                    description: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Enter a room name here to start a new meeting or join an existing one. You can also choose to open it in a new window.')) ?>,
-                                    side: 'bottom'
-                                }
-                            },
-                            {
-                                element: '#jitsi-active-grid',
-                                popover: {
-                                    title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Active Streams')) ?>,
-                                    description: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Currently active live streams will appear here. Click "JOIN LIVE STREAM" to watch or participate.')) ?>,
-                                    side: 'top'
-                                }
-                            },
-                            {
-                                element: '#jitsi-ended-grid',
-                                popover: {
-                                    title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Ended Streams')) ?>,
-                                    description: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Past streams are archived here. You can see details like duration and participant counts.')) ?>,
-                                    side: 'top'
-                                }
-                            },
-                            {
-                                element: '#jitsi-guide-button',
-                                popover: {
-                                    title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'You are ready!')) ?>,
-                                    description: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'You can restart this guide anytime by clicking the "Guide" button.')) ?>,
-                                    side: 'bottom'
-                                }
-                            }
-                        ]
+                // Steps Data (Abstracted)
+                var stepsData = [
+                    {
+                        sel: false, // Orphan
+                        title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Welcome to Live Stream')) ?>,
+                        desc: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Here you can join active meetings, start your own, or watch past recordings.')) ?>
+                    },
+                    {
+                        sel: '#jitsi-join-panel',
+                        title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Join or Create a Room')) ?>,
+                        desc: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Enter a room name here to start a new meeting or join an existing one. You can also choose to open it in a new window.')) ?>,
+                        pos: 'bottom'
+                    },
+                    {
+                        sel: '#jitsi-active-grid',
+                        title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Active Streams')) ?>,
+                        desc: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Currently active live streams will appear here. Click "JOIN LIVE STREAM" to watch or participate.')) ?>,
+                        pos: 'top'
+                    },
+                    {
+                        sel: '#jitsi-ended-grid',
+                        title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Ended Streams')) ?>,
+                        desc: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Past streams are archived here. You can see details like duration and participant counts.')) ?>,
+                        pos: 'top'
+                    },
+                    {
+                        sel: '#jitsi-guide-button',
+                        title: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'You are ready!')) ?>,
+                        desc: <?= json_encode(Yii::t('JitsiMeetCloud8x8Module.base', 'You can restart this guide anytime by clicking the "Guide" button.')) ?>,
+                        pos: 'bottom'
                     }
-                });
+                ];
 
-                // Mark as seen after starting (Driver.js will handle visual flow)
+                // FEATURE DETECTION
+                var isLegacyBootstrap = (typeof Tour !== 'undefined');
+                
+                if (isLegacyBootstrap) {
+                    // --- HUMHUB 1.17.x / BOOTSTRAP TOUR ---
+                    log.debug('[JitsiGuide] Detected Bootstrap Tour (Legacy).');
+                    
+                    var legacySteps = stepsData.map(function(s) {
+                        var step = {
+                            title: s.title,
+                            content: s.desc,
+                            orphan: !s.sel,
+                            backdrop: true
+                        };
+                        if (s.sel) {
+                            step.element = s.sel;
+                            step.placement = s.pos || 'auto';
+                        }
+                        return step;
+                    });
+
+                    tourModule.start({
+                        name: tourId,
+                        steps: legacySteps,
+                        template: tourModule.config.template // Pass template if available
+                    });
+
+                } else {
+                    // --- HUMHUB 1.18+ / DRIVER.JS ---
+                    log.debug('[JitsiGuide] Detected Driver.js (New).');
+                    
+                    var driverSteps = stepsData.map(function(s) {
+                        return {
+                            element: s.sel ? s.sel : undefined,
+                            popover: {
+                                title: s.title,
+                                description: s.desc,
+                                side: s.pos || 'bottom'
+                            }
+                        };
+                    });
+
+                    tourModule.start({
+                        tourId: tourId,
+                        nextUrl: '', 
+                        driverJs: {
+                            showProgress: true,
+                            showButtons: ['next', 'previous', 'close'],
+                            steps: driverSteps
+                        }
+                    });
+                }
+                
+                // Mark seen
                 localStorage.setItem(storageKey, 'true');
-                console.log('[JitsiGuide] Tour started successfully.');
+                log.debug('[JitsiGuide] Tour started successfully.');
 
             } catch (e) {
-                console.error('[JitsiGuide] Error starting tour:', e);
+                log.error('[JitsiGuide] Error starting tour: ' + e);
             }
         };
 
@@ -117,7 +148,7 @@ TourAsset::register($this);
         // Button click handler
         $(document).off('click', '#jitsi-guide-button').on('click', '#jitsi-guide-button', function(e) {
             e.preventDefault();
-            console.log('[JitsiGuide] Button Clicked');
+            log.debug('[JitsiGuide] Button Clicked');
             startStreamTour(true);
         });
 
