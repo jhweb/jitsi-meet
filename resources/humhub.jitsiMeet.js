@@ -38,6 +38,51 @@ humhub.module('jitsiMeet', function (module, require, $) {
 
     Room.prototype.initJitsi = function () {
         var that = this;
+        var mode = this.options.mode || 'self_hosted';
+        var domain = this.options.jitsidomain;
+
+        // --- LAZY LOAD EXTERNAL_API.JS ---
+        // Determine the script URL based on mode
+        var scriptUrl = 'https://' + domain + '/external_api.js';
+        if (mode === 'jaas') {
+             // JaaS usually uses a different domain (8x8.vc) via settings, which is passed as jitsidomain/jaasdomain
+             // But let's respect the domain passed in options
+             var jaasDomain = this.options.jaasdomain || '8x8.vc';
+             scriptUrl = 'https://' + jaasDomain + '/libs/external_api.min.js';
+        }
+        
+        // Helper to proceed once/if script is loaded
+        var startMeeting = function() {
+             that._startMeeting();
+        };
+
+        if (typeof window.JitsiMeetExternalAPI === 'undefined') {
+             console.log('JitsiMeet API not found. Loading from:', scriptUrl);
+             $.ajax({
+                 url: scriptUrl,
+                 dataType: "script",
+                 cache: true
+             }).done(function() {
+                 console.log('JitsiMeet API loaded successfully via AJAX.');
+                 startMeeting();
+             }).fail(function(jqxhr, settings, exception) {
+                 console.error('Failed to load JitsiMeet API:', exception);
+                 $('#jitsiMeetD').html('<div style="color:red; text-align:center; padding:20px;">Error loading conferencing API. Please refresh or try again later.</div>');
+             });
+        } else {
+             console.log('JitsiMeet API already loaded. Starting meeting immediately.');
+             startMeeting();
+        }
+    };
+
+    // Internal method containing the original initJitsi logic
+    Room.prototype._startMeeting = function() {
+        var that = this;
+        
+        var mode = this.options.mode || 'self_hosted';
+        var domain = this.options.jitsidomain;
+        // Re-evaluate these variables locally as they were used in the original scope
+
 
         var mode = this.options.mode || 'self_hosted';
         var domain = this.options.jitsidomain;

@@ -7,7 +7,7 @@ use yii\helpers\Url;
 /* @var $jitsiDomain string */
 /* @var $jitsiRoomUrl array */
 ?>
-<script <?= Html::nonce() ?> src='https://<?= $jitsiDomain ?>/external_api.js'></script>
+
 <div class="container" style="text-align: center;">
     <?= SiteLogo::widget(['place' => 'login']) ?>
     <br>

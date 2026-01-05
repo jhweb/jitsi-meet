@@ -38,12 +38,10 @@ class Assets extends AssetBundle
             if ($mode === 'jaas') {
                 $domain = $module->getSettingsForm()->jaasDomain ?: '8x8.vc';
                 $this->js = [
-                    'https://' . $domain . '/libs/external_api.min.js',
                     'humhub.jitsiMeet.js'
                 ];
             } else {
                 $this->js = [
-                    'https://' . $module->getSettingsForm()->jitsiDomain . '/external_api.js',
                     'humhub.jitsiMeet.js'
                 ];
             }
