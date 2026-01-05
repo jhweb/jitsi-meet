@@ -97,11 +97,20 @@ TourAsset::register($this);
                         return step;
                     });
 
-                    tourModule.start({
+                    // DIRECT INSTANTIATION to avoid HumHub Core TypeErrors (u.done)
+                    var tourOptions = {
                         name: tourId,
                         steps: legacySteps,
-                        template: tourModule.config.template // Pass template if available
-                    });
+                        storage: false // We handle 'seen' state manually logic
+                    };
+                    
+                    if (tourModule.config && tourModule.config.template) {
+                        tourOptions.template = tourModule.config.template;
+                    }
+                    
+                    var tour = new Tour(tourOptions);
+                    tour.init();
+                    tour.start();
 
                 } else {
                     // --- HUMHUB 1.18+ / DRIVER.JS ---
