@@ -103,6 +103,31 @@ body.dark-mode .stream-card,
     border: 2px solid #8cb321;
 }
 
+/* Scheduled stream card */
+.stream-card.scheduled {
+    border: 2px solid #4a90d9;
+}
+
+.stream-card.scheduled .stream-badge,
+.scheduled-badge {
+    color: #4a90d9;
+}
+
+.btn-stream-scheduled {
+    background-color: transparent !important;
+    border: 2px solid #4a90d9 !important;
+    color: #4a90d9 !important;
+    font-weight: bold;
+    text-transform: uppercase;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-stream-scheduled:hover {
+    background-color: #4a90d9 !important;
+    color: #fff !important;
+}
+
 .stream-badge {
     position: absolute;
     top: 15px;

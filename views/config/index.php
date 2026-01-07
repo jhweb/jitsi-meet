@@ -121,6 +121,19 @@ $this->registerJs($script);
         <?= $form->field($model, 'liveStreamRoomName'); ?>
         <?= $form->field($model, 'entriesPerPage')->textInput(['type' => 'number', 'min' => 1]); ?>
         <hr>
+        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Scheduling Features') ?></h4>
+        <?php 
+        $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
+        $calendarEnabled = $module->isCalendarEnabled();
+        ?>
+        <?php if (!$calendarEnabled): ?>
+        <div class="alert alert-warning">
+            <i class="fa fa-exclamation-triangle"></i>
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'The HumHub Calendar module is required for scheduling features. Please install and enable the Calendar module to use this feature.') ?>
+        </div>
+        <?php endif; ?>
+        <?= $form->field($model, 'enableScheduling')->checkbox(['disabled' => !$calendarEnabled]); ?>
+        <hr>
         <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'User Guide') ?></h4>
         <?= $form->field($model, 'enableTour')->checkbox(); ?>
 

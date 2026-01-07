@@ -9,6 +9,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\Module;
 use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use Yii;
 
 /**
@@ -22,7 +23,8 @@ class RoomController extends Controller
     protected function getAccessRules()
     {
         return [
-            ['permissions' => [CanAccess::class], 'actions' => ['index']]
+            ['permissions' => [CanAccess::class], 'actions' => ['index']],
+            ['permissions' => [CanSchedule::class], 'actions' => ['schedule']],
         ];
     }
 
@@ -34,7 +36,6 @@ class RoomController extends Controller
             $fixedName = $this->fixRoomName($rawTitle);
             
             // Cache the raw title for Webhook/Stream creation usage
-            // Use lowercase key to match Webhook logic
             $cacheKey = 'jitsiMeetCloud8x8:roomTitle:' . strtolower($fixedName);
             Yii::$app->cache->set($cacheKey, $rawTitle, 3600);
 
@@ -43,37 +44,90 @@ class RoomController extends Controller
 
         $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;
         
-        // Get active streams first (these always show on page 1)
+        // Get scheduled streams (upcoming)
+        $scheduledStreams = [];
+        if ($this->module->isSchedulingEnabled()) {
+            $scheduledStreams = JitsiLiveStream::find()
+                ->where(['status' => JitsiLiveStream::STATUS_SCHEDULED])
+                ->orderBy(['scheduled_start' => SORT_ASC])
+                ->all();
+        }
+        
+        // Get active/live streams
         $activeStreams = JitsiLiveStream::find()
             ->where(['status' => JitsiLiveStream::STATUS_LIVE])
             ->orderBy(['start_time' => SORT_DESC])
             ->all();
-        $activeCount = count($activeStreams);
+        $activeCount = count($activeStreams) + count($scheduledStreams);
         
-        // For ended streams, adjust limit on page 1 to account for live streams
+        // For ended streams, adjust limit on page 1
         $query = JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED]);
         $countQuery = clone $query;
         $totalEnded = $countQuery->count();
         
         $pages = new \yii\data\Pagination(['totalCount' => $totalEnded, 'pageSize' => $entriesPerPage]);
         
-        // On page 1, reduce limit by active streams count so total = entriesPerPage
-        // On other pages, use full limit (live streams only show on page 1)
         $endedLimit = $entriesPerPage;
         if ($pages->page === 0 && $activeCount > 0) {
             $endedLimit = max(0, $entriesPerPage - $activeCount);
         }
         
+        // Check if user can schedule
+        $canSchedule = $this->module->isSchedulingEnabled() && Yii::$app->user->can(CanSchedule::class);
+        
         return $this->render('index', [
             'model' => $model,
             'jitsiDomain' => $this->module->getSettingsForm()->jitsiDomain,
+            'scheduledStreams' => $scheduledStreams,
             'activeStreams' => $activeStreams,
             'endedStreams' => $query->offset($pages->offset)
                 ->limit($endedLimit)
                 ->orderBy(['end_time' => SORT_DESC])
                 ->all(),
-            'pages' => $pages
+            'pages' => $pages,
+            'canSchedule' => $canSchedule,
         ]);
+    }
+
+    /**
+     * Schedule a new stream
+     */
+    public function actionSchedule()
+    {
+        if (!$this->module->isSchedulingEnabled()) {
+            throw new \yii\web\ForbiddenHttpException('Scheduling is not enabled.');
+        }
+
+        $model = new JitsiLiveStream();
+        $model->status = JitsiLiveStream::STATUS_SCHEDULED;
+        $model->creator_id = Yii::$app->user->id;
+
+        if (Yii::$app->request->isAjax && !Yii::$app->request->isPost) {
+            // Render modal form
+            return $this->renderAjax('schedule_modal', ['model' => $model]);
+        }
+
+        if ($model->load(Yii::$app->request->post())) {
+            // Generate room name from title
+            $model->room_name = $this->fixRoomName($model->title ?: 'Stream' . time());
+            
+            // Ensure scheduled_end is set
+            if (empty($model->scheduled_end) && !empty($model->scheduled_start)) {
+                $start = new \DateTime($model->scheduled_start);
+                $model->scheduled_end = $start->modify('+1 hour')->format('Y-m-d H:i:s');
+            }
+
+            if ($model->save()) {
+                Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream scheduled successfully!'));
+                return $this->redirect(['index']);
+            }
+        }
+
+        if (Yii::$app->request->isAjax) {
+            return $this->renderAjax('schedule_modal', ['model' => $model]);
+        }
+
+        return $this->redirect(['index']);
     }
 
     public function actionOpen()

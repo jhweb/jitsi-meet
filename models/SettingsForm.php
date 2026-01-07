@@ -49,6 +49,9 @@ class SettingsForm extends Model
     // Tour settings
     public $enableTour;
 
+    // Scheduling settings
+    public $enableScheduling;
+
 
     /**
      * @inheritdoc
@@ -71,7 +74,7 @@ class SettingsForm extends Model
             [['enableLiveStreamWidget'], 'boolean'],
             [['liveStreamWidgetTitle', 'liveStreamRoomName'], 'string'],
             [['entriesPerPage'], 'integer', 'min' => 1],
-            [['enableTour'], 'boolean'],
+            [['enableTour', 'enableScheduling'], 'boolean'],
             
             // JaaS mode validation
             [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath'], 'required', 'when' => function($model) {
@@ -169,6 +172,7 @@ class SettingsForm extends Model
             'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
             'entriesPerPage' => Yii::t('JitsiMeetCloud8x8Module.base', 'Number of entries per page in the ended streams list.'),
             'enableTour' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable the guided tour for first-time users.'),
+            'enableScheduling' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable scheduling features. Requires the HumHub Calendar module to be installed and enabled.'),
         ];
     }
 
@@ -254,6 +258,9 @@ class SettingsForm extends Model
         $this->entriesPerPage = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('entriesPerPage', 12);
         
         $this->enableTour = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1);
+
+        // Scheduling settings (default disabled)
+        $this->enableScheduling = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableScheduling', 0);
     }
 
     /**
@@ -290,6 +297,7 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('entriesPerPage', (int)$this->entriesPerPage);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableTour', (int)$this->enableTour);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableScheduling', (int)$this->enableScheduling);
 
         $this->roomPrefix = ucwords(preg_replace("/[^A-Za-z0-9]/", '', $this->roomPrefix));
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('roomPrefix', $this->roomPrefix);

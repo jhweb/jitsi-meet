@@ -75,4 +75,53 @@ class Events
         $event->sender->addWidget(\humhubContrib\modules\jitsiMeetCloud8x8\widgets\LiveStreamWidget::class, [], ['sortOrder' => 0]);
     }
 
+    /**
+     * Cron handler: Transition scheduled streams to live when start time is reached
+     * Called hourly by HumHub cron. For more frequent checks, add external cron:
+     * `* * * * * php /path/to/humhub/protected/yii cron/run`
+     * 
+     * @param \yii\base\Event $event
+     */
+    public static function onCronRun($event)
+    {
+        /** @var Module $module */
+        $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
+        
+        // Skip if scheduling is not enabled
+        if (!$module->isSchedulingEnabled()) {
+            return;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        
+        // Find scheduled streams that should have started
+        $scheduledStreams = \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::find()
+            ->where(['status' => \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_SCHEDULED])
+            ->andWhere(['<=', 'scheduled_start', $now])
+            ->all();
+
+        foreach ($scheduledStreams as $stream) {
+            try {
+                // Transition to live
+                $stream->status = \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_LIVE;
+                $stream->start_time = $now;
+                
+                if ($stream->save(false)) {
+                    Yii::info("Scheduled stream '{$stream->room_name}' (ID: {$stream->id}) transitioned to LIVE", 'jitsi-meet');
+                    
+                    // TODO: Send "Now Live" notification
+                    // LivestreamStarting::instance()->about($stream)->sendBulk($recipients);
+                } else {
+                    Yii::error("Failed to transition scheduled stream ID: {$stream->id}", 'jitsi-meet');
+                }
+            } catch (\Exception $e) {
+                Yii::error("Error transitioning stream ID {$stream->id}: " . $e->getMessage(), 'jitsi-meet');
+            }
+        }
+
+        if (count($scheduledStreams) > 0) {
+            Yii::info("Cron: Processed " . count($scheduledStreams) . " scheduled stream(s)", 'jitsi-meet');
+        }
+    }
+
 }

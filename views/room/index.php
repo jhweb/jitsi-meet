@@ -9,8 +9,10 @@ use yii\widgets\LinkPager;
 use humhub\modules\user\widgets\Image;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm */
+/* @var $scheduledStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
 /* @var $activeStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
 /* @var $endedStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
+/* @var $canSchedule bool */
 
 $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this);
 ?>
@@ -19,6 +21,13 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         <div class="panel panel-default">
             <div class="panel-heading">
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open conference room'); ?>
+                
+                <?php if (!empty($canSchedule)): ?>
+                <?= ModalButton::primary('<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
+                    ->load(Url::to(['schedule']))
+                    ->cssClass('btn btn-sm btn-primary pull-right')
+                    ->style('margin-left: 10px;') ?>
+                <?php endif; ?>
                 
                 <?php if (Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1)): ?>
                 <button id="jitsi-guide-button" class="btn btn-xs btn-info pull-right">
@@ -41,9 +50,12 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         <!-- Live Streams Grid -->
         <div class="live-stream-grid">
                 <?php 
-                // Merge streams for a single grid flow
-                // Active always first
-                $allStreams = array_merge($activeStreams, $endedStreams);
+                // Merge streams for a single grid flow: scheduled → active → ended
+                $allStreams = array_merge(
+                    $scheduledStreams ?? [], 
+                    $activeStreams, 
+                    $endedStreams
+                );
                 ?>
                 
                 <?php foreach ($allStreams as $stream): ?>
@@ -51,7 +63,7 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?php endforeach; ?>
 
                 
-                <!-- Placeholders to fill grid if few items (Optional, based on screenshot) -->
+                <!-- Placeholders to fill grid if few items -->
                 <?php for($i=0; $i < max(0, 4 - count($allStreams)); $i++): ?>
                  <div class="stream-card ended" style="opacity: 0.3; border-style: dashed;">
                  </div>
@@ -81,3 +93,4 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
         return true;
     });
 </script>
+

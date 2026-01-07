@@ -4,6 +4,7 @@ namespace humhubContrib\modules\jitsiMeetCloud8x8;
 
 
 use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
+use Yii;
 use yii\helpers\Url;
 
 class Module extends \humhub\components\Module
@@ -38,7 +39,7 @@ class Module extends \humhub\components\Module
      */
     public function getPermissions($contentContainer = null)
     {
-        return [
+        $permissions = [
             new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess(),
             new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat(),
             new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\JoinVideoChat(),
@@ -47,6 +48,35 @@ class Module extends \humhub\components\Module
             new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\EnableLivestreaming(),
             new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\ManageRecordings(),
         ];
+
+        // Add scheduling permission only if calendar module is available
+        if ($this->isCalendarEnabled()) {
+            $permissions[] = new \humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule();
+        }
+
+        return $permissions;
+    }
+
+    /**
+     * Check if the HumHub Calendar module is enabled
+     * Required for scheduling features
+     * 
+     * @return bool
+     */
+    public function isCalendarEnabled(): bool
+    {
+        return Yii::$app->moduleManager->isEnabled('calendar');
+    }
+
+    /**
+     * Check if scheduling features are enabled
+     * Requires both calendar module and settings toggle
+     * 
+     * @return bool
+     */
+    public function isSchedulingEnabled(): bool
+    {
+        return $this->isCalendarEnabled() && $this->getSettingsForm()->enableScheduling;
     }
 
     /**
