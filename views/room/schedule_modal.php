@@ -4,6 +4,7 @@ use humhub\libs\Html;
 use humhub\widgets\Button;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
+use humhub\widgets\ModalDialog;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream */
 
@@ -50,13 +51,7 @@ $this->registerJs('
 ');
 ?>
 
-<div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-    <h4 class="modal-title">
-        <i class="fa fa-calendar-plus-o"></i>
-        <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream') ?>
-    </h4>
-</div>
+<?php ModalDialog::begin(['header' => Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream'), 'icon' => 'fa-calendar-plus-o']); ?>
 
 <?php $form = ActiveForm::begin([
     'id' => 'schedule-stream-form',
@@ -122,3 +117,4 @@ $this->registerJs('
 </div>
 
 <?php ActiveForm::end(); ?>
+<?php ModalDialog::end(); ?>

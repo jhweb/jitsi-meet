@@ -22,13 +22,6 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
             <div class="panel-heading">
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open conference room'); ?>
                 
-                <?php if (!empty($canSchedule)): ?>
-                <?= ModalButton::primary('<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
-                    ->load(Url::to(['schedule']))
-                    ->cssClass('btn btn-sm btn-primary pull-right')
-                    ->style('margin-left: 10px;') ?>
-                <?php endif; ?>
-                
                 <?php if (Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableTour', 1)): ?>
                 <button id="jitsi-guide-button" class="btn btn-xs btn-info pull-right">
                     <i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Guide'); ?>
@@ -42,6 +35,13 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?= $form->field($model, 'newWindow')->checkbox(); ?>
                 
                 <?= Button::save(Yii::t('JitsiMeetCloud8x8Module.base', 'Join'))->loader(false)->submit() ?>
+
+                <?php if (!empty($canSchedule)): ?>
+                <?= ModalButton::primary('<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
+                    ->load(Url::to(['schedule']))
+                    ->cssClass('btn btn-success')  // Match standard button size/style
+                    ->style('margin-left: 10px;') ?>
+                <?php endif; ?>
 
                 <?php ActiveForm::end(); ?>
             </div>
