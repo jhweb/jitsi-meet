@@ -51,7 +51,7 @@ $this->registerJs('
 ');
 ?>
 
-<?php ModalDialog::begin(['header' => Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream'), 'icon' => 'fa-calendar-plus-o']); ?>
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream')]); ?>
 
 <?php $form = ActiveForm::begin([
     'id' => 'schedule-stream-form',
