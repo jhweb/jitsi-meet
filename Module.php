@@ -65,7 +65,7 @@ class Module extends \humhub\components\Module
      */
     public function isCalendarEnabled(): bool
     {
-        return Yii::$app->moduleManager->isEnabled('calendar');
+        return Yii::$app->hasModule('calendar');
     }
 
     /**
