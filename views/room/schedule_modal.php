@@ -60,6 +60,11 @@ $this->registerJs('
 ]); ?>
 
 <div class="modal-body">
+    <div class="form-group">
+        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Target Calendar') ?></label>
+        <?= Html::dropDownList('target_calendar', $defaultCalendarGuid, $calendars, ['class' => 'form-control', 'data-ui-select2' => '']) ?>
+    </div>
+
     <?= $form->field($model, 'title')->textInput([
         'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'e.g. Weekly Bible Study'),
         'maxlength' => 255
@@ -90,6 +95,14 @@ $this->registerJs('
     <?= $form->field($model, 'scheduled_end')->hiddenInput()->label(false) ?>
 
     <?= $form->field($model, 'all_day')->checkbox()->label(Yii::t('JitsiMeetCloud8x8Module.base', 'All day event')) ?>
+    
+    <div class="form-group">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="is_public" value="1" checked> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Public') ?>
+            </label>
+        </div>
+    </div>
     
     <?= $form->field($model, 'lobby_enabled')->checkbox()->label(Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Waiting Room (Lobby)')) ?>
 

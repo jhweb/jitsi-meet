@@ -10,8 +10,10 @@ use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
-
 use humhub\modules\content\models\Content;
+use humhub\modules\content\models\ContentContainer;
+use humhub\modules\space\models\Space;
+use humhub\modules\space\models\Membership;
 use Yii;
 
 /**
@@ -105,8 +107,25 @@ class RoomController extends Controller
         $model->creator_id = Yii::$app->user->id;
 
         if (Yii::$app->request->isAjax && !Yii::$app->request->isPost) {
+            // Prepare Calendar Targets (Profile + Spaces)
+            $user = Yii::$app->user->getIdentity();
+            $calendars = [];
+            $calendars[$user->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Profile: {name}', ['name' => $user->displayName]);
+            
+            // Fetch Spaces
+            $memberships = Membership::findAll(['user_id' => $user->id]);
+            foreach ($memberships as $membership) {
+                if ($membership->space) {
+                    $calendars[$membership->space->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $membership->space->displayName]);
+                }
+            }
+
             // Render modal form
-            return $this->renderAjax('schedule_modal', ['model' => $model]);
+            return $this->renderAjax('schedule_modal', [
+                'model' => $model,
+                'calendars' => $calendars,
+                'defaultCalendarGuid' => $user->contentContainerRecord->guid
+            ]);
         }
 
         if ($model->load(Yii::$app->request->post())) {
@@ -125,19 +144,28 @@ class RoomController extends Controller
                 if ($this->module->isCalendarEnabled()) {
                     try {
                         $calendarEntry = new \humhub\modules\calendar\models\CalendarEntry();
-                        // Create on User Profile by default
-                        $container = Yii::$app->user->getIdentity();
+                        
+                        // Resolve Target Content Container
+                        $targetGuid = Yii::$app->request->post('target_calendar');
+                        $container = null;
+                        if ($targetGuid) {
+                            $container = ContentContainer::findRecord($targetGuid);
+                        }
+                        if (!$container) {
+                            $container = Yii::$app->user->getIdentity(); // Fallback
+                        }
                         $calendarEntry->content->setContainer($container);
                         
                         $calendarEntry->title = $model->title;
                         
                         // Append Join Link to Description for Modal access
                         $joinUrl = $model->getUrl();
-                        $joinLink = "[Join Watch Room]($joinUrl)";
+                        $joinLink = "### [JOIN WATCH ROOM]($joinUrl)";
                         $calendarEntry->description = $model->description . "\n\n" . $joinLink;
                         
-                        // Set Visibility to Public so everyone can see it (fixes 401)
-                        $calendarEntry->content->visibility = Content::VISIBILITY_PUBLIC;
+                        // Set Visibility (Public or Private)
+                        $isPublic = Yii::$app->request->post('is_public');
+                        $calendarEntry->content->visibility = $isPublic ? Content::VISIBILITY_PUBLIC : Content::VISIBILITY_PRIVATE;
 
                         // Convert datetime-local format (2026-01-08T10:30) to Y-m-d H:i:s
                         $startDt = new \DateTime($model->scheduled_start);
