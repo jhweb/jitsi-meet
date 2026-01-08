@@ -72,18 +72,50 @@ if ($isEnded) {
         </div>
         
         <div style="text-align: center; margin-top: 10px;">
-            <?php if (!empty($stream->calendar_entry_id) && $stream->calendarEntry): ?>
-                <?= \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
-                    ->load($stream->calendarEntry->getUrl())
-                    ->cssClass('btn btn-default btn-sm')
-                    ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']) ?>
-            <?php else: ?>
-                <!-- Fallback if Calendar Entry creation failed -->
+            <?php 
+            if (!empty($stream->calendar_entry_id) && $stream->calendarEntry) {
+                $calendarEntry = $stream->calendarEntry;
+                $container = $calendarEntry->content->container;
+                
+                // Check if user is attending (State 2 = Accepted usually, we accept anything > 0 as "responded" or checks specific state)
+                // Using Query Builder for safety (assuming table exists)
+                $isAttending = (new \yii\db\Query())
+                    ->from('calendar_entry_participant')
+                    ->where(['calendar_entry_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
+                    ->andWhere(['participation_state' => 2]) // 2 = Accepted
+                    ->exists();
+
+                $isCreator = ($stream->creator_id == Yii::$app->user->id);
+
+                if ($isAttending || $isCreator) {
+                     // Show View Event Button
+                     echo \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
+                        ->load($container->createUrl('/calendar/entry/view', ['id' => $calendarEntry->id]))
+                        ->cssClass('btn btn-default btn-sm')
+                        ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']);
+                } else {
+                    // Show Attend Button
+                    // Action: /calendar/entry/respond?type=2 (Attend)
+                    $attendUrl = $container->createUrl('/calendar/entry/respond', ['id' => $calendarEntry->id, 'type' => 2]); // type 2 = Attend
+                    
+                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), '#', [
+                        'class' => 'btn btn-primary btn-sm',
+                        'style' => 'width: 100%; font-size: 11px; white-space: normal;',
+                        'data-action-click' => 'client.post',
+                        'data-action-url' => $attendUrl,
+                        'data-action-success' => 'function() { location.reload(); }' // Reload to show View Event
+                    ]);
+                }
+            } else {
+                // Fallback for streams without calendar entry
+                 ?>
                 <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
                    class="btn btn-primary btn-sm" target="_blank" style="width: 100%; font-size: 11px; white-space: normal;">
                     <i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'JOIN ROOM') ?>
                 </a>
-            <?php endif; ?>
+                <?php
+            }
+            ?>
         </div>
     </div>
 
