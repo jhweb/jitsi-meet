@@ -10,6 +10,8 @@ use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
+use humhub\modules\content\models\Content;
 use Yii;
 
 /**
@@ -128,7 +130,15 @@ class RoomController extends Controller
                         $calendarEntry->content->setContainer($container);
                         
                         $calendarEntry->title = $model->title;
-                        $calendarEntry->description = $model->description;
+                        
+                        // Append Join Link to Description for Modal access
+                        $joinUrl = $model->getUrl();
+                        $joinLink = "[Join Watch Room]($joinUrl)";
+                        $calendarEntry->description = $model->description . "\n\n" . $joinLink;
+                        
+                        // Set Visibility to Public so everyone can see it (fixes 401)
+                        $calendarEntry->content->visibility = Content::VISIBILITY_PUBLIC;
+
                         // Convert datetime-local format (2026-01-08T10:30) to Y-m-d H:i:s
                         $startDt = new \DateTime($model->scheduled_start);
                         $endDt = new \DateTime($model->scheduled_end);
