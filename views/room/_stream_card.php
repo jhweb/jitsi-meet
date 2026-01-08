@@ -72,9 +72,9 @@ if ($isEnded) {
         </div>
         
         <div style="text-align: center; margin-top: 10px;">
-            <?php if (!empty($stream->calendar_entry_id)): ?>
+            <?php if (!empty($stream->calendar_entry_id) && $stream->calendarEntry): ?>
                 <?= \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
-                    ->load(Url::to(['/calendar/entry/view', 'id' => $stream->calendar_entry_id]))
+                    ->load($stream->calendarEntry->getUrl())
                     ->cssClass('btn btn-default btn-sm')
                     ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']) ?>
             <?php else: ?>
