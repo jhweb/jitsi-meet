@@ -10,7 +10,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
-use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
+
 use humhub\modules\content\models\Content;
 use Yii;
 
