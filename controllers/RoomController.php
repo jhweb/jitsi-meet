@@ -177,7 +177,7 @@ class RoomController extends Controller
                         
                         // Enable participation and ensure it's published mechanism
                         $calendarEntry->participant_info = 1; 
-                        $calendarEntry->participation_mode = \humhub\modules\calendar\models\CalendarEntry::PARTICIPATION_MODE_ALL;
+                        $calendarEntry->participation_mode = 2; // CalendarEntry::PARTICIPATION_MODE_ALL (Hardcoded to prevent undefined constant in older versions)
                         
                         // Force Published State (1)
                         $calendarEntry->content->state = 1; // Content::STATE_PUBLISHED 
