@@ -39,12 +39,12 @@ $this->registerJs('
                 
                 // Format as YYYY-MM-DDTHH:MM (Local Time)
                 var year = startDate.getFullYear();
-                var month = ('0' + (startDate.getMonth() + 1)).slice(-2);
-                var day = ('0' + startDate.getDate()).slice(-2);
-                var hours = ('0' + startDate.getHours()).slice(-2);
-                var minutes = ('0' + startDate.getMinutes()).slice(-2);
+                var month = ("0" + (startDate.getMonth() + 1)).slice(-2);
+                var day = ("0" + startDate.getDate()).slice(-2);
+                var hours = ("0" + startDate.getHours()).slice(-2);
+                var minutes = ("0" + startDate.getMinutes()).slice(-2);
                 
-                var endStr = year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
+                var endStr = year + "-" + month + "-" + day + "T" + hours + ":" + minutes;
                 scheduledEnd.value = endStr;
             }
         }
