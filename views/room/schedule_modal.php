@@ -35,10 +35,16 @@ $this->registerJs('
             // Update end time based on start time + duration
             var startInput = document.getElementById("jitsilivestream-scheduled_start");
             if (startInput && startInput.value) {
-                var startDate = new Date(startInput.value);
                 startDate.setMinutes(startDate.getMinutes() + minutes);
-                // Format as YYYY-MM-DD HH:MM
-                var endStr = startDate.toISOString().slice(0, 16);
+                
+                // Format as YYYY-MM-DDTHH:MM (Local Time)
+                var year = startDate.getFullYear();
+                var month = ('0' + (startDate.getMonth() + 1)).slice(-2);
+                var day = ('0' + startDate.getDate()).slice(-2);
+                var hours = ('0' + startDate.getHours()).slice(-2);
+                var minutes = ('0' + startDate.getMinutes()).slice(-2);
+                
+                var endStr = year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
                 scheduledEnd.value = endStr;
             }
         }

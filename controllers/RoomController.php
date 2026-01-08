@@ -182,10 +182,39 @@ class RoomController extends Controller
                             $model->save();
                             Yii::info("Created Calendar Entry {$calendarEntry->id} for Stream {$model->id}", 'jitsi-meet-cloud-8x8');
                         } else {
+                            // Critical Failure: Calendar Entry invalid
                             Yii::error("Failed to create Calendar Entry for Stream {$model->id}: " . json_encode($calendarEntry->errors), 'jitsi-meet-cloud-8x8');
+                            
+                            // Rollback: Delete the just-created stream so we don't have orphans
+                            $model->delete();
+                            
+                            // Pass errors back to form
+                            $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'Calendar Entry creation failed: {errors}', [
+                                'errors' => reset($calendarEntry->getFirstErrors())
+                            ]));
+                            
+                            if (Yii::$app->request->isAjax) {
+                                return $this->renderAjax('schedule_modal', [
+                                    'model' => $model,
+                                    'calendars' => $calendars,
+                                    'defaultCalendarGuid' => $user->contentContainerRecord->guid
+                                ]);
+                            }
+                            return $this->render('index', ['model' => $model]);
                         }
                     } catch (\Exception $e) {
                          Yii::error("Calendar Integration Error: " . $e->getMessage(), 'jitsi-meet-cloud-8x8');
+                         // Rollback
+                         $model->delete();
+                         $model->addError('title', 'System Error: ' . $e->getMessage());
+                         
+                         if (Yii::$app->request->isAjax) {
+                                return $this->renderAjax('schedule_modal', [
+                                    'model' => $model,
+                                    'calendars' => $calendars,
+                                    'defaultCalendarGuid' => $user->contentContainerRecord->guid
+                                ]);
+                         }
                     }
                 }
 
