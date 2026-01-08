@@ -129,8 +129,11 @@ class RoomController extends Controller
                         
                         $calendarEntry->title = $model->title;
                         $calendarEntry->description = $model->description;
-                        $calendarEntry->start_datetime = $model->scheduled_start;
-                        $calendarEntry->end_datetime = $model->scheduled_end;
+                        // Convert datetime-local format (2026-01-08T10:30) to Y-m-d H:i:s
+                        $startDt = new \DateTime($model->scheduled_start);
+                        $endDt = new \DateTime($model->scheduled_end);
+                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
+                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
                         // Enable participation (Attend/Decline)
