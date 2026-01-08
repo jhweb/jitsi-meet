@@ -118,6 +118,36 @@ class RoomController extends Controller
             }
 
             if ($model->save()) {
+                
+                // Phase 2: Deep Calendar Integration - Auto-create Calendar Entry
+                if ($this->module->isCalendarEnabled()) {
+                    try {
+                        $calendarEntry = new \humhub\modules\calendar\models\CalendarEntry();
+                        // Create on User Profile by default
+                        $container = Yii::$app->user->getIdentity();
+                        $calendarEntry->content->setContainer($container);
+                        
+                        $calendarEntry->title = $model->title;
+                        $calendarEntry->description = $model->description;
+                        $calendarEntry->start_datetime = $model->scheduled_start;
+                        $calendarEntry->end_datetime = $model->scheduled_end;
+                        $calendarEntry->all_day = $model->all_day;
+                        $calendarEntry->time_zone = $model->timezone;
+                        // Enable participation (Attend/Decline)
+                        $calendarEntry->participant_info = 1; 
+                        
+                        if ($calendarEntry->save()) {
+                            $model->calendar_entry_id = $calendarEntry->id;
+                            $model->save();
+                            Yii::info("Created Calendar Entry {$calendarEntry->id} for Stream {$model->id}", 'jitsi-meet-cloud-8x8');
+                        } else {
+                            Yii::error("Failed to create Calendar Entry for Stream {$model->id}: " . json_encode($calendarEntry->errors), 'jitsi-meet-cloud-8x8');
+                        }
+                    } catch (\Exception $e) {
+                         Yii::error("Calendar Integration Error: " . $e->getMessage(), 'jitsi-meet-cloud-8x8');
+                    }
+                }
+
                 Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream scheduled successfully!'));
                 return $this->redirect(['index']);
             }

@@ -141,6 +141,8 @@ class WebhookController extends Controller
             case 'RTCSTATS_UPLOADED':
                 $this->handleRtcstatsUploaded($roomName, $payload);
                 break;
+            case 'SETTINGS_PROVISIONING':
+                return $this->handleSettingsProvisioning($roomName, $payload);
             default:
                 Yii::info("Jitsi Webhook: Unhandled event type [$eventType]", 'jitsi-meet-cloud-8x8');
                 break;
@@ -797,20 +799,41 @@ class WebhookController extends Controller
         }
         if (!$stream) {
             // Find most recent matching room (Exact match)
-             $stream = JitsiLiveStream::find()
+            $stream = JitsiLiveStream::find()
                 ->where(['room_name' => $roomName])
                 ->orderBy(['created_at' => SORT_DESC])
                 ->one();
+             
+             if (!$stream) {
+                 // FAILSAFE: Try searching by lowercase room name
+                 $stream = JitsiLiveStream::find()
+                    ->where(['lower(room_name)' => strtolower($roomName)])
+                    ->orderBy(['created_at' => SORT_DESC])
+                    ->one();
+             }
         }
+        return $stream;
+    }
+
+    private function handleSettingsProvisioning($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: SETTINGS_PROVISIONING for $roomName", 'jitsi-meet-cloud-8x8');
         
-        if (!$stream) {
-            // Fallback: Case-insensitive search
-             $stream = JitsiLiveStream::find()
-                ->where(['LOWER(room_name)' => strtolower($roomName)])
-                ->orderBy(['created_at' => SORT_DESC])
-                ->one();
+        // Find the latest stream for this room
+        // We use the general find method but without session ID since provisioning happens before session start
+        $stream = $this->findStream($roomName, null);
+
+        if ($stream && $stream->lobby_enabled) {
+             Yii::info("Jitsi Webhook Provisioning: Enabling Lobby for $roomName", 'jitsi-meet-cloud-8x8');
+             // Return 8x8 provisioning JSON
+             return [
+                 'lobbyEnabled' => true,
+                 'lobbyType' => 'WAIT_FOR_APPROVAL',
+                 // 'passcode' => '1234', // Optional features for future
+             ];
         }
 
-        return $stream;
+        // Default: No lobby
+        return ['lobbyEnabled' => false];
     }
 }

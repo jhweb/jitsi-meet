@@ -71,10 +71,19 @@ if ($isEnded) {
             <?php endif; ?>
         </div>
         
-        <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
-           class="btn btn-default btn-stream-scheduled" target="_blank">
-            <i class="fa fa-calendar-check-o"></i> VIEW WAITING ROOM
-        </a>
+        <div style="display: flex; gap: 5px; justify-content: center; margin-top: 10px;">
+            <?php if (!empty($stream->calendar_entry_id)): ?>
+                <?= \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
+                    ->load(Url::to(['/calendar/entry/view', 'id' => $stream->calendar_entry_id]))
+                    ->cssClass('btn btn-info btn-sm')
+                    ->options(['style' => 'flex: 1; font-size: 11px; white-space: normal;']) ?>
+            <?php endif; ?>
+            
+            <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
+               class="btn btn-primary btn-sm" target="_blank" style="flex: 1; font-size: 11px; white-space: normal;">
+                <i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', $stream->lobby_enabled ? 'JOIN LOBBY' : 'JOIN ROOM') ?>
+            </a>
+        </div>
     </div>
 
 <?php elseif ($isLive): ?>

@@ -90,6 +90,8 @@ $this->registerJs('
     <?= $form->field($model, 'scheduled_end')->hiddenInput()->label(false) ?>
 
     <?= $form->field($model, 'all_day')->checkbox()->label(Yii::t('JitsiMeetCloud8x8Module.base', 'All day event')) ?>
+    
+    <?= $form->field($model, 'lobby_enabled')->checkbox()->label(Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Waiting Room (Lobby)')) ?>
 
     <div class="form-group">
         <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Timezone') ?></label>
@@ -105,7 +107,7 @@ $this->registerJs('
 
     <div class="alert alert-info">
         <i class="fa fa-info-circle"></i>
-        <?= Yii::t('JitsiMeetCloud8x8Module.base', 'When the scheduled time arrives, the stream will automatically appear as "Live" and participants can join.') ?>
+        <?= Yii::t('JitsiMeetCloud8x8Module.base', 'A Calendar Entry will be automatically created. If Lobby is enabled, guests must be approved by a moderator.') ?>
     </div>
 </div>
 
