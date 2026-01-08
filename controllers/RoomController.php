@@ -174,8 +174,13 @@ class RoomController extends Controller
                         $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
-                        // Enable participation (Attend/Decline)
+                        
+                        // Enable participation and ensure it's published mechanism
                         $calendarEntry->participant_info = 1; 
+                        $calendarEntry->participation_mode = \humhub\modules\calendar\models\CalendarEntry::PARTICIPATION_MODE_ALL;
+                        
+                        // Force Published State (1)
+                        $calendarEntry->content->state = 1; // Content::STATE_PUBLISHED 
                         
                         if ($calendarEntry->save()) {
                             $model->calendar_entry_id = $calendarEntry->id;
