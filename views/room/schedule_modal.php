@@ -35,6 +35,7 @@ $this->registerJs('
             // Update end time based on start time + duration
             var startInput = document.getElementById("jitsilivestream-scheduled_start");
             if (startInput && startInput.value) {
+                var startDate = new Date(startInput.value);
                 startDate.setMinutes(startDate.getMinutes() + minutes);
                 
                 // Format as YYYY-MM-DDTHH:MM (Local Time)

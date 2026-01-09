@@ -98,12 +98,10 @@ if ($isEnded) {
                     // Action: /calendar/entry/respond?type=2 (Attend)
                     $attendUrl = $container->createUrl('/calendar/entry/respond', ['id' => $calendarEntry->id, 'type' => 2]); // type 2 = Attend
                     
-                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), '#', [
+                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), 'javascript:;', [
                         'class' => 'btn btn-primary btn-sm',
                         'style' => 'width: 100%; font-size: 11px; white-space: normal;',
-                        'data-action-click' => 'client.post',
-                        'data-action-url' => $attendUrl,
-                        'data-action-success' => 'function() { location.reload(); }' // Reload to show View Event
+                        'onclick' => 'humhub.modules.client.post("' . $attendUrl . '").then(function() { location.reload(); }); return false;',
                     ]);
                 }
             } else {
