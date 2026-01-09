@@ -453,10 +453,27 @@ class RoomController extends Controller
                 ->exists();
         }
 
+        // Get all attendees (participation_state = 2)
+        $attendeeIds = (new \yii\db\Query())
+            ->select(['user_id'])
+            ->from('calendar_entry_participant')
+            ->where(['calendar_entry_id' => $calendarEntry->id, 'participation_state' => 2])
+            ->column();
+        
+        $attendees = [];
+        if (!empty($attendeeIds)) {
+            $attendees = \humhub\modules\user\models\User::find()
+                ->where(['id' => $attendeeIds])
+                ->limit(20) // Limit to 20 profile icons
+                ->all();
+        }
+
         return $this->renderAjax('modal_event', [
             'stream' => $stream,
             'calendarEntry' => $calendarEntry,
             'isAttending' => $isAttending,
+            'attendees' => $attendees,
+            'attendeeCount' => count($attendeeIds),
         ]);
     }
 

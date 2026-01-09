@@ -3,11 +3,14 @@
 use humhub\libs\Html;
 use humhub\widgets\ModalDialog;
 use humhub\widgets\Button;
+use humhub\modules\user\widgets\Image;
 use yii\helpers\Url;
 
 /* @var $stream \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream */
 /* @var $calendarEntry \humhub\modules\calendar\models\CalendarEntry */
 /* @var $isAttending bool */
+/* @var $attendees array User models of attendees */
+/* @var $attendeeCount int Total attendee count */
 
 $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->user->id);
 ?>
@@ -18,6 +21,15 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
     <div class="event-details">
         <div class="row">
             <div class="col-md-12">
+                
+                <!-- Countdown Timer -->
+                <?php if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_SCHEDULED): ?>
+                <div class="countdown-display" style="text-align: center; font-size: 18px; font-weight: bold; color: #4a90d9; margin-bottom: 15px; padding: 10px; background: rgba(74, 144, 217, 0.1); border-radius: 4px;">
+                    <i class="fa fa-hourglass-half"></i>
+                    <?= $stream->getCountdown() ?>
+                </div>
+                <?php endif; ?>
+
                 <p>
                     <i class="fa fa-clock-o"></i>
                     <strong><?= Yii::$app->formatter->asDatetime($calendarEntry->start_datetime, 'medium') ?></strong>
@@ -42,8 +54,32 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
 
                 <hr>
 
+                <!-- Attendees Section -->
+                <div class="attendees-section" style="margin: 15px 0;">
+                    <h5><i class="fa fa-users"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Attendees') ?> (<?= $attendeeCount ?>)</h5>
+                    
+                    <?php if (!empty($attendees)): ?>
+                    <div class="attendee-icons" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;">
+                        <?php foreach ($attendees as $attendee): ?>
+                            <a href="<?= $attendee->getUrl() ?>" title="<?= Html::encode($attendee->displayName) ?>" style="text-decoration: none;">
+                                <?= Image::widget(['user' => $attendee, 'width' => 32, 'showTooltip' => true, 'link' => false]) ?>
+                            </a>
+                        <?php endforeach; ?>
+                        <?php if ($attendeeCount > 20): ?>
+                            <span class="more-attendees" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #ddd; border-radius: 50%; font-size: 11px; color: #666;">
+                                +<?= $attendeeCount - 20 ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                    <?php else: ?>
+                    <p class="text-muted" style="font-style: italic;"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No attendees yet. Be the first to RSVP!') ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <hr>
+
                 <div class="participation-section">
-                    <h5><i class="fa fa-users"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your Response') ?></h5>
+                    <h5><i class="fa fa-hand-paper-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your Response') ?></h5>
                     
                     <?php if (Yii::$app->user->isGuest): ?>
                         <p class="text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Please log in to RSVP.') ?></p>
