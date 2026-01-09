@@ -12,6 +12,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use humhub\modules\content\models\Content;
 use humhub\modules\content\models\ContentContainer;
+use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
 use Yii;
@@ -28,7 +29,7 @@ class RoomController extends Controller
     {
         return [
             ['permissions' => [CanAccess::class], 'actions' => ['index']],
-            ['permissions' => [CanSchedule::class], 'actions' => ['schedule']],
+            ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete']],
         ];
     }
 
@@ -772,5 +773,53 @@ class RoomController extends Controller
         // User has permission but is not chat starter and not admin
         Yii::info("isModeratorForCurrentContext: user {$user->id} has permission but is not chat starter => moderator=false", 'jitsi-meet');
         return false;
+    }
+    /**
+     * Delete a stream
+     * @param int $id
+     */
+    public function actionDelete($id)
+    {
+        $stream = JitsiLiveStream::findOne($id);
+        if (!$stream) {
+            throw new \yii\web\NotFoundHttpException();
+        }
+
+        // Access Check: Creator or Space Admin or System Admin
+        $canDelete = false;
+
+        // 1. Creator
+        if ($stream->creator_id == Yii::$app->user->id) {
+            $canDelete = true;
+        } 
+        // 2. System Admin
+        elseif (Yii::$app->user->isAdmin()) {
+            $canDelete = true;
+        } 
+        // 3. Space Admin
+        elseif ($stream->space && $stream->space->isAdmin()) {
+            $canDelete = true;
+        }
+        // 4. Fallback: Check if user is admin of the container if it's a profile/space linked via calendar entry
+        elseif ($stream->calendarEntry) {
+             $container = $stream->calendarEntry->content->container;
+             if ($container && $container->can(ManageContent::class)) {
+                 $canDelete = true;
+             }
+        }
+
+        if (!$canDelete) {
+            throw new \yii\web\ForbiddenHttpException('You are not allowed to delete this stream.');
+        }
+
+        // Delete Calendar Entry if exists (this will also delete the stream via Foreign Key if set, but we do it manually to be safe)
+        if ($stream->calendarEntry) {
+            $stream->calendarEntry->delete();
+        }
+
+        $stream->delete();
+        
+        Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream deleted successfully.'));
+        return $this->redirect(['index']);
     }
 }

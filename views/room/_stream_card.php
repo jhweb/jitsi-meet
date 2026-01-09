@@ -36,7 +36,32 @@ if ($isEnded) {
 
 <?php if ($isScheduled): ?>
     <!-- Scheduled Card -->
-    <div class="stream-card scheduled">
+    <div class="stream-card scheduled" style="position: relative;">
+        <?php 
+        // Delete Permission Check
+        $canDelete = false;
+        if (!Yii::$app->user->isGuest) {
+            if ($stream->creator_id == Yii::$app->user->id) {
+                $canDelete = true;
+            } elseif (Yii::$app->user->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->space && $stream->space->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->calendarEntry && $stream->calendarEntry->content->container->can(\humhub\modules\content\permissions\ManageContent::class)) {
+                $canDelete = true;
+            }
+        }
+        
+        if ($canDelete): ?>
+            <?= Html::a('<i class="fa fa-times"></i>', Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
+                'class' => 'stream-delete-btn',
+                'data-method' => 'post',
+                'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this scheduled stream?'),
+                'title' => Yii::t('JitsiMeetCloud8x8Module.base', 'Delete Stream'),
+                'style' => 'position: absolute; top: 10px; right: 10px; color: #ff0000; cursor: pointer; z-index: 100; font-size: 14px;'
+            ]) ?>
+        <?php endif; ?>
+
         <div class="stream-badge scheduled-badge">
             <i class="fa fa-clock-o"></i> SCHEDULED
         </div>
