@@ -107,7 +107,7 @@ if ($isEnded) {
                 $isAttending = (new \yii\db\Query())
                     ->from('calendar_entry_participant')
                     ->where(['calendar_entry_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
-                    ->andWhere(['participation_state' => 2]) // 2 = Accepted
+                    ->andWhere(['participation_state' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED])
                     ->exists();
 
                 $isCreator = ($stream->creator_id == Yii::$app->user->id);
@@ -136,7 +136,7 @@ if ($isEnded) {
                         ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']);
                 } else {
                     // Show Attend Button - Use custom RSVP endpoint
-                    $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => 2]);
+                    $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED]);
                     
                     echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), $attendUrl, [
                         'class' => 'btn btn-primary btn-sm',

@@ -88,8 +88,8 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
                     <?php else: ?>
                         <div class="btn-group" style="margin: 10px 0;">
                             <?php
-                            $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => 2]);
-                            $declineUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => 4]);
+                            $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED]);
+                            $declineUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_DECLINED]);
                             ?>
                             
                             <?php if ($isAttending): ?>

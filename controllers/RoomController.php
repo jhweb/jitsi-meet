@@ -11,6 +11,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use humhub\modules\content\models\Content;
+use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
@@ -508,10 +509,14 @@ class RoomController extends Controller
      * @param int $id Stream ID
      * @param int $type Response type (2=Attend, 3=Maybe, 4=Decline)
      */
-    public function actionAttend($id, $type = 2)
+    public function actionAttend($id, $type = null)
     {
         if (Yii::$app->user->isGuest) {
             throw new \yii\web\ForbiddenHttpException('You must be logged in.');
+        }
+
+        if ($type === null) {
+            $type = CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED;
         }
 
         $stream = JitsiLiveStream::findOne($id);
