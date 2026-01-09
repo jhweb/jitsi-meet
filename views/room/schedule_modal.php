@@ -58,15 +58,23 @@ $this->registerJs('
 ');
 ?>
 
-<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream')]); ?>
+<?php 
+$isEdit = !$model->isNewRecord;
+$actionUrl = $isEdit ? Url::to(['/jitsi-meet-cloud-8x8/room/edit', 'id' => $model->id]) : Url::to(['/jitsi-meet-cloud-8x8/room/schedule']);
+$title = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Edit Stream') : Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule New Stream');
+$submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Changes') : Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream');
+?>
+
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . $title]); ?>
 
 <?php $form = ActiveForm::begin([
     'id' => 'schedule-stream-form',
-    'action' => Url::to(['/jitsi-meet-cloud-8x8/room/schedule']),
+    'action' => $actionUrl,
     'enableClientValidation' => true,
 ]); ?>
 
 <div class="modal-body">
+    <?php if (!$isEdit): ?>
     <div class="form-group">
         <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Target Calendar') ?></label>
         <?= Html::dropDownList('target_calendar', $defaultCalendarGuid, $calendars, [
@@ -75,6 +83,7 @@ $this->registerJs('
             'options' => isset($disabledOptions) ? $disabledOptions : []
         ]) ?>
     </div>
+    <?php endif; ?>
 
     <?= $form->field($model, 'title')->textInput([
         'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'e.g. Weekly Bible Study'),
@@ -138,7 +147,7 @@ $this->registerJs('
 <div class="modal-footer">
     <?= Button::defaultType(Yii::t('JitsiMeetCloud8x8Module.base', 'Cancel'))
         ->options(['data-dismiss' => 'modal']) ?>
-    <?= Button::primary(Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
+    <?= Button::primary($submitButtonText)
         ->submit() ?>
 </div>
 

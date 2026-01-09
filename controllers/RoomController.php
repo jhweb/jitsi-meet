@@ -29,7 +29,7 @@ class RoomController extends Controller
     {
         return [
             ['permissions' => [CanAccess::class], 'actions' => ['index']],
-            ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete']],
+            ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
         ];
     }
 
@@ -120,6 +120,11 @@ class RoomController extends Controller
             foreach ($memberships as $membership) {
                 if ($membership->space) {
                     $space = $membership->space;
+                    // Filter Private Spaces
+                    if ($space->visibility === Space::VISIBILITY_NONE) {
+                        continue;
+                    }
+
                     $hasCalendar = $space->isModuleEnabled('calendar');
                     $label = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $space->displayName]);
                     
@@ -821,5 +826,99 @@ class RoomController extends Controller
         
         Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream deleted successfully.'));
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Edit a scheduled stream
+     * @param int $id
+     */
+    public function actionEdit($id)
+    {
+        $model = JitsiLiveStream::findOne($id);
+        if (!$model) {
+            throw new \yii\web\NotFoundHttpException();
+        }
+
+        // Access Check: Creator or Space Admin or System Admin
+        $canEdit = false;
+        if ($model->creator_id == Yii::$app->user->id) {
+            $canEdit = true;
+        } elseif (Yii::$app->user->isAdmin()) {
+            $canEdit = true;
+        } elseif ($model->space && $model->space->isAdmin()) {
+            $canEdit = true;
+        }
+
+        if (!$canEdit) {
+            throw new \yii\web\ForbiddenHttpException('You are not allowed to edit this stream.');
+        }
+
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+             if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
+                 $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'End time must be after start time'));
+            } else {
+                 $model->start_time = (new \DateTime($model->scheduled_start))->format('Y-m-d H:i:s');
+                 $model->end_time = (new \DateTime($model->scheduled_end))->format('Y-m-d H:i:s');
+
+                 if ($model->save()) {
+                    // Update Calendar Entry
+                    if ($model->calendarEntry) {
+                        $calendarEntry = $model->calendarEntry;
+                        $calendarEntry->title = $model->title;
+                        $calendarEntry->description = $model->description . "\n\n### [JOIN WATCH ROOM](" . $model->getUrl() . ")";
+                        
+                        $startDt = new \DateTime($model->scheduled_start);
+                        $endDt = new \DateTime($model->scheduled_end);
+                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
+                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
+                        $calendarEntry->time_zone = $model->timezone;
+                        
+                        $calendarEntry->save();
+                    }
+                    
+                    Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream updated.'));
+                    return $this->redirect(['index']);
+                 }
+            }
+        }
+        
+        // Prepare Calendar Targets (Reuse logic)
+        $user = Yii::$app->user->getIdentity();
+        $calendars = [];
+        $disabledOptions = [];
+        
+        $calendars[$user->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Profile: {name}', ['name' => $user->displayName]);
+        
+        $memberships = Membership::findAll(['user_id' => $user->id]);
+        foreach ($memberships as $membership) {
+            if ($membership->space) {
+                $space = $membership->space;
+                
+                // Filter Private Spaces
+                if ($space->visibility === Space::VISIBILITY_NONE) {
+                    continue;
+                }
+                
+                $hasCalendar = $space->isModuleEnabled('calendar');
+                $label = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $space->displayName]);
+                if (!$hasCalendar) {
+                    $label .= ' (' . Yii::t('JitsiMeetCloud8x8Module.base', 'Calendar disabled') . ')';
+                    $disabledOptions[$space->contentContainerRecord->guid] = ['disabled' => true];
+                }
+                $calendars[$space->contentContainerRecord->guid] = $label;
+            }
+        }
+        
+        $defaultCalendarGuid = $user->contentContainerRecord->guid;
+        if ($model->calendarEntry) {
+            $defaultCalendarGuid = $model->calendarEntry->content->container->guid;
+        }
+
+        return $this->renderAjax('schedule_modal', [
+            'model' => $model,
+            'calendars' => $calendars,
+            'disabledOptions' => $disabledOptions,
+            'defaultCalendarGuid' => $defaultCalendarGuid
+        ]);
     }
 }

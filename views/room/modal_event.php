@@ -110,11 +110,37 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
 
                 <hr>
 
-                <div class="join-section" style="text-align: center; margin-top: 20px;">
+                <div class="join-section" style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <?php
+                    $canManage = false; 
+                    if (!Yii::$app->user->isGuest) {
+                        if ($isCreator) {
+                            $canManage = true;
+                        } elseif (Yii::$app->user->isAdmin()) {
+                            $canManage = true;
+                        } elseif ($stream->space && $stream->space->isAdmin()) {
+                            $canManage = true;
+                        }
+                    }
+                    
+                    if ($canManage): ?>
+                        <a href="#" data-action-click="ui.modal.load" data-action-url="<?= Url::to(['/jitsi-meet-cloud-8x8/room/edit', 'id' => $stream->id]) ?>" class="btn btn-warning btn-lg">
+                            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'EDIT') ?>
+                        </a>
+                    <?php endif; ?>
+
                     <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
-                       class="btn btn-lg btn-primary" target="_blank">
+                       class="btn btn-lg btn-success" style="background-color: #5cb85c; border-color: #4cae4c; color: white;" target="_blank">
                         <i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Join Watch Room') ?>
                     </a>
+                    
+                    <?php if ($canManage): ?>
+                        <?= Html::a(Yii::t('JitsiMeetCloud8x8Module.base', 'DELETE'), Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
+                            'class' => 'btn btn-danger btn-lg',
+                            'data-method' => 'post',
+                            'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this event?'),
+                        ]) ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
