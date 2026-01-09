@@ -88,26 +88,21 @@ if ($isEnded) {
                 $isCreator = ($stream->creator_id == Yii::$app->user->id);
 
                 if ($isAttending || $isCreator) {
-                     // Show View Event Button - Use content stream URL with contentId filter
-                     // The Calendar module's standard view is through content stream
-                     $viewUrl = $calendarEntry->content->getUrl();
+                     // Show View Event Button - Use custom modal
+                     $viewEventUrl = Url::to(['/jitsi-meet-cloud-8x8/room/view-event', 'id' => $stream->id]);
                      
-                     echo \humhub\libs\Html::a('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'), $viewUrl, [
-                        'class' => 'btn btn-default btn-sm',
-                        'style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;',
-                        'target' => '_blank',
-                     ]);
+                     echo \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
+                        ->load($viewEventUrl)
+                        ->cssClass('btn btn-default btn-sm')
+                        ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']);
                 } else {
-                    // Show Attend Button
-                    // Action: /calendar/entry/respond?type=2 (Attend)
-                    $attendUrl = $container->createUrl('/calendar/entry/respond', ['id' => $calendarEntry->id, 'type' => 2]); // type 2 = Attend
+                    // Show Attend Button - Use custom RSVP endpoint
+                    $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => 2]);
                     
-                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), '#', [
+                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), $attendUrl, [
                         'class' => 'btn btn-primary btn-sm',
                         'style' => 'width: 100%; font-size: 11px; white-space: normal;',
-                        'data-action-click' => 'client.post',
-                        'data-action-url' => $attendUrl,
-                        'data-reload' => 'true',
+                        'data-method' => 'post',
                     ]);
                 }
             } else {

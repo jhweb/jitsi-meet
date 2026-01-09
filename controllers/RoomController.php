@@ -429,6 +429,85 @@ class RoomController extends Controller
         ]);
     }
 
+    /**
+     * Custom modal view for scheduled event details
+     * Bypasses Calendar module container routing issues
+     * @param int $id Stream ID
+     */
+    public function actionViewEvent($id)
+    {
+        $stream = JitsiLiveStream::findOne($id);
+        if (!$stream || !$stream->calendarEntry) {
+            throw new \yii\web\NotFoundHttpException('Event not found.');
+        }
+
+        $calendarEntry = $stream->calendarEntry;
+        
+        // Get current user's participation status
+        $isAttending = false;
+        if (!Yii::$app->user->isGuest) {
+            $isAttending = (new \yii\db\Query())
+                ->from('calendar_entry_participant')
+                ->where(['calendar_entry_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
+                ->andWhere(['participation_state' => 2]) // 2 = Accepted
+                ->exists();
+        }
+
+        return $this->renderAjax('modal_event', [
+            'stream' => $stream,
+            'calendarEntry' => $calendarEntry,
+            'isAttending' => $isAttending,
+        ]);
+    }
+
+    /**
+     * Handle RSVP action for scheduled events
+     * Bypasses Calendar module container routing issues
+     * @param int $id Stream ID
+     * @param int $type Response type (2=Attend, 3=Maybe, 4=Decline)
+     */
+    public function actionAttend($id, $type = 2)
+    {
+        if (Yii::$app->user->isGuest) {
+            throw new \yii\web\ForbiddenHttpException('You must be logged in.');
+        }
+
+        $stream = JitsiLiveStream::findOne($id);
+        if (!$stream || !$stream->calendarEntry) {
+            throw new \yii\web\NotFoundHttpException('Event not found.');
+        }
+
+        $calendarEntry = $stream->calendarEntry;
+        $userId = Yii::$app->user->id;
+
+        // Check if already a participant
+        $existing = (new \yii\db\Query())
+            ->from('calendar_entry_participant')
+            ->where(['calendar_entry_id' => $calendarEntry->id, 'user_id' => $userId])
+            ->one();
+
+        if ($existing) {
+            // Update existing participation
+            Yii::$app->db->createCommand()->update('calendar_entry_participant', [
+                'participation_state' => (int)$type,
+            ], ['calendar_entry_id' => $calendarEntry->id, 'user_id' => $userId])->execute();
+        } else {
+            // Insert new participation
+            Yii::$app->db->createCommand()->insert('calendar_entry_participant', [
+                'calendar_entry_id' => $calendarEntry->id,
+                'user_id' => $userId,
+                'participation_state' => (int)$type,
+            ])->execute();
+        }
+
+        if (Yii::$app->request->isAjax) {
+            return $this->asJson(['success' => true, 'message' => 'RSVP updated']);
+        }
+
+        Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Your response has been recorded.'));
+        return $this->redirect(['index']);
+    }
+
     public function actionInvite()
     {
         $settings = $this->module->getSettingsForm();
