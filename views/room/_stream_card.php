@@ -11,6 +11,15 @@ $isScheduled = ($stream->status == JitsiLiveStream::STATUS_SCHEDULED);
 $isLive = ($stream->status == JitsiLiveStream::STATUS_LIVE);
 $isEnded = ($stream->status == JitsiLiveStream::STATUS_ENDED);
 
+// 30-Minute Rule: Override Live status if Premature
+// Treat as Scheduled if started early (e.g. by creator for testing) but > 30m before start
+if ($isLive && $stream->scheduled_start) {
+    if (strtotime($stream->scheduled_start) > (time() + 1800)) {
+        $isLive = false;
+        $isScheduled = true;
+    }
+}
+
 // For ended streams, calculate download availability
 if ($isEnded) {
     $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));

@@ -60,10 +60,40 @@ class RoomController extends Controller
         }
         
         // Get active/live streams
-        $activeStreams = JitsiLiveStream::find()
+        $allLiveStreams = JitsiLiveStream::find()
             ->where(['status' => JitsiLiveStream::STATUS_LIVE])
             ->orderBy(['start_time' => SORT_DESC])
             ->all();
+            
+        $activeStreams = [];
+        
+        // Filter Premature Live Streams (30-minute rule)
+        foreach ($allLiveStreams as $stream) {
+            $isPremature = false;
+            
+            // Check 30-minute window
+            if ($stream->scheduled_start) {
+                $startTs = strtotime($stream->scheduled_start);
+                // If scheduled start is more than 30 minutes in future
+                if ($startTs > (time() + 1800)) { 
+                    $isPremature = true;
+                }
+            }
+            
+            if ($isPremature) {
+                // Treat as Scheduled (Hide Live status from public grid)
+                $scheduledStreams[] = $stream;
+            } else {
+                $activeStreams[] = $stream;
+            }
+        }
+        
+        // Re-sort scheduled streams by date
+        usort($scheduledStreams, function($a, $b) {
+            $t1 = $a->scheduled_start ? strtotime($a->scheduled_start) : 0;
+            $t2 = $b->scheduled_start ? strtotime($b->scheduled_start) : 0;
+            return $t1 - $t2;
+        });
         $activeCount = count($activeStreams) + count($scheduledStreams);
         
         // For ended streams, adjust limit on page 1
@@ -276,6 +306,20 @@ class RoomController extends Controller
             Yii::$app->request->get('startSilent') === 'true') {
             $startSilent = true;
             Yii::info("RoomController::actionOpen - Silent join requested", 'jitsi-meet');
+        }
+
+        // Security: Check 30-minute rule for scheduled streams
+        $stream = JitsiLiveStream::find()->where(['room_name' => $name])->one();
+        if ($stream && $stream->scheduled_start && !Yii::$app->user->isGuest) {
+            $startTs = strtotime($stream->scheduled_start);
+            // If more than 30 mins before start
+            if ($startTs > (time() + 1800)) {
+                $user = Yii::$app->user->getIdentity();
+                // Only creator or system admin can join early (for testing)
+                if ($stream->creator_id != $user->id && !$user->isSystemAdmin()) {
+                     throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'This event has not started yet. You can join 30 minutes before the start time.'));
+                }
+            }
         }
 
         // Default modal route and params

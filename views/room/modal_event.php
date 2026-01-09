@@ -129,10 +129,30 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
                         </a>
                     <?php endif; ?>
 
+                    <?php
+                    $hideJoin = false;
+                    $timeMsg = '';
+                    // 30-minute Access Rule
+                    if ($stream->scheduled_start && strtotime($stream->scheduled_start) > (time() + 1800)) {
+                        if (!$canManage) {
+                            $hideJoin = true;
+                            $diff = strtotime($stream->scheduled_start) - time();
+                            // Simple human readable format or just standard format
+                            $timeMsg = Yii::t('JitsiMeetCloud8x8Module.base', 'Starts in {0}', [Yii::$app->formatter->asDuration($diff)]);
+                        }
+                    }
+                    ?>
+
+                    <?php if (!$hideJoin): ?>
                     <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
                        class="btn btn-lg btn-success" style="background-color: #5cb85c; border-color: #4cae4c; color: white;" target="_blank">
                         <i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Join Watch Room') ?>
                     </a>
+                    <?php else: ?>
+                    <button class="btn btn-lg btn-default disabled" disabled>
+                        <i class="fa fa-clock-o"></i> <?= $timeMsg ?>
+                    </button>
+                    <?php endif; ?>
                     
                     <?php if ($canManage): ?>
                         <?= Html::a(Yii::t('JitsiMeetCloud8x8Module.base', 'DELETE'), Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [

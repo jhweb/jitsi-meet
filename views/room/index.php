@@ -52,8 +52,8 @@ $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this
                 <?php 
                 // Merge streams for a single grid flow: scheduled → active → ended
                 $allStreams = array_merge(
-                    $scheduledStreams ?? [], 
-                    $activeStreams, 
+                    $activeStreams,
+                    $scheduledStreams ?? [],
                     $endedStreams
                 );
                 ?>
