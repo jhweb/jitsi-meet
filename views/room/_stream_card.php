@@ -87,7 +87,21 @@ if ($isEnded) {
 
                 $isCreator = ($stream->creator_id == Yii::$app->user->id);
 
-                if ($isAttending || $isCreator) {
+                // Check Space membership
+                $isSpaceEvent = ($container instanceof \humhub\modules\space\models\Space);
+                $isMember = true;
+                if ($isSpaceEvent && !Yii::$app->user->isGuest) {
+                    $isMember = $container->isMember(Yii::$app->user->id);
+                }
+
+                if ($isSpaceEvent && !$isMember) {
+                     // Show Join Space Button if not a member
+                     echo \humhub\libs\Html::a('<i class="fa fa-users"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Join Space'), $container->getUrl(), [
+                        'class' => 'btn btn-info btn-sm',
+                        'style' => 'width: 100%; font-size: 11px; white-space: normal;',
+                        'target' => '_blank',
+                     ]);
+                } elseif ($isAttending || $isCreator) {
                      // Show View Event Button - Use custom modal
                      $viewEventUrl = Url::to(['/jitsi-meet-cloud-8x8/room/view-event', 'id' => $stream->id]);
                      

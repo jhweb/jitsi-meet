@@ -110,13 +110,24 @@ class RoomController extends Controller
             // Prepare Calendar Targets (Profile + Spaces)
             $user = Yii::$app->user->getIdentity();
             $calendars = [];
+            $disabledOptions = [];
+            
             $calendars[$user->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Profile: {name}', ['name' => $user->displayName]);
             
             // Fetch Spaces
             $memberships = Membership::findAll(['user_id' => $user->id]);
             foreach ($memberships as $membership) {
                 if ($membership->space) {
-                    $calendars[$membership->space->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $membership->space->displayName]);
+                    $space = $membership->space;
+                    $hasCalendar = $space->isModuleEnabled('calendar');
+                    $label = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $space->displayName]);
+                    
+                    if (!$hasCalendar) {
+                        $label .= ' (' . Yii::t('JitsiMeetCloud8x8Module.base', 'Calendar disabled') . ')';
+                        $disabledOptions[$space->contentContainerRecord->guid] = ['disabled' => true];
+                    }
+                    
+                    $calendars[$space->contentContainerRecord->guid] = $label;
                 }
             }
 
@@ -124,6 +135,7 @@ class RoomController extends Controller
             return $this->renderAjax('schedule_modal', [
                 'model' => $model,
                 'calendars' => $calendars,
+                'disabledOptions' => $disabledOptions,
                 'defaultCalendarGuid' => $user->contentContainerRecord->guid
             ]);
         }
@@ -151,6 +163,13 @@ class RoomController extends Controller
                         if ($targetGuid) {
                             $container = ContentContainer::findRecord($targetGuid);
                         }
+                        
+                        // Check if Space and save space_id
+                        if ($container instanceof \humhub\modules\space\models\Space) {
+                             $model->space_id = $container->id;
+                             $model->save();
+                        }
+
                         if (!$container) {
                             $container = Yii::$app->user->getIdentity(); // Fallback
                         }

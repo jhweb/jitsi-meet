@@ -69,7 +69,11 @@ $this->registerJs('
 <div class="modal-body">
     <div class="form-group">
         <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Target Calendar') ?></label>
-        <?= Html::dropDownList('target_calendar', $defaultCalendarGuid, $calendars, ['class' => 'form-control', 'data-ui-select2' => '']) ?>
+        <?= Html::dropDownList('target_calendar', $defaultCalendarGuid, $calendars, [
+            'class' => 'form-control', 
+            'data-ui-select2' => '',
+            'options' => isset($disabledOptions) ? $disabledOptions : []
+        ]) ?>
     </div>
 
     <?= $form->field($model, 'title')->textInput([

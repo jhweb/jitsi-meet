@@ -60,7 +60,7 @@ class JitsiLiveStream extends ActiveRecord
     {
         return [
             [['room_name'], 'required'],
-            [['status', 'creator_id', 'participant_count', 'active_count', 'has_recording', 'all_day', 'parent_event_id', 'calendar_entry_id', 'lobby_enabled'], 'integer'],
+            [['status', 'creator_id', 'space_id', 'participant_count', 'active_count', 'has_recording', 'all_day', 'parent_event_id', 'calendar_entry_id', 'lobby_enabled'], 'integer'],
             [['start_time', 'end_time', 'created_at', 'updated_at', 'scheduled_start', 'scheduled_end'], 'safe'],
             [['room_name', 'session_id', 'stream_url', 'event_id', 'title', 'rrule', 'uid', 'timezone'], 'string', 'max' => 255],
             [['recurrence_id'], 'string', 'max' => 50],
@@ -149,6 +149,14 @@ class JitsiLiveStream extends ActiveRecord
     public function getCalendarEntry()
     {
         return $this->hasOne(\humhub\modules\calendar\models\CalendarEntry::class, ['id' => 'calendar_entry_id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getSpace()
+    {
+        return $this->hasOne(\humhub\modules\space\models\Space::class, ['id' => 'space_id']);
     }
 
     /**
