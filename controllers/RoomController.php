@@ -13,7 +13,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use humhub\modules\content\models\Content;
 use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
-use humhub\modules\calendar\models\Reminder;
+// use humhub\modules\calendar\models\Reminder;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
@@ -543,11 +543,13 @@ class RoomController extends Controller
 
         // Check if reminder is set
         $hasReminder = false;
+        /*
         if (!Yii::$app->user->isGuest) {
             $hasReminder = Reminder::find()
                 ->where(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
                 ->exists();
         }
+        */
 
         return $this->renderAjax('modal_event', [
             'stream' => $stream,
@@ -565,6 +567,7 @@ class RoomController extends Controller
     public function actionToggleReminder($id)
     {
         $this->forceLogin();
+        /*
         $stream = JitsiLiveStream::findOne($id);
         if (!$stream || !$stream->calendarEntry) {
             throw new \yii\web\NotFoundHttpException();
@@ -598,6 +601,8 @@ class RoomController extends Controller
             
             return $this->asJson(['success' => true, 'reminder' => true]);
         }
+        */
+        return $this->asJson(['success' => false, 'message' => 'Not implemented']);
     }
 
     /**
