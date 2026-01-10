@@ -13,7 +13,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use humhub\modules\content\models\Content;
 use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
-// use humhub\modules\calendar\models\Reminder;
+use humhub\modules\calendar\models\reminder\CalendarReminder;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
@@ -543,13 +543,17 @@ class RoomController extends Controller
 
         // Check if reminder is set
         $hasReminder = false;
-        /*
         if (!Yii::$app->user->isGuest) {
-            $hasReminder = Reminder::find()
-                ->where(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
-                ->exists();
+            $userContainer = Yii::$app->user->getIdentity()->contentContainerRecord;
+            if ($userContainer && $calendarEntry->content) {
+                $hasReminder = CalendarReminder::find()
+                    ->where([
+                        'content_id' => $calendarEntry->content->id,
+                        'contentcontainer_id' => $userContainer->id
+                    ])
+                    ->exists();
+            }
         }
-        */
 
         return $this->renderAjax('modal_event', [
             'stream' => $stream,
@@ -566,19 +570,28 @@ class RoomController extends Controller
      */
     public function actionToggleReminder($id)
     {
-        $this->forceLogin();
-        /*
+        if (Yii::$app->user->isGuest) {
+            return Yii::$app->user->loginRequired();
+        }
+
         $stream = JitsiLiveStream::findOne($id);
         if (!$stream || !$stream->calendarEntry) {
             throw new \yii\web\NotFoundHttpException();
         }
         
         $calendarEntry = $stream->calendarEntry;
-        $uid = Yii::$app->user->id;
+        $userContainer = Yii::$app->user->getIdentity()->contentContainerRecord;
         
+        if (!$userContainer || !$calendarEntry->content) {
+             return $this->asJson(['success' => false, 'message' => 'Invalid content or user']);
+        }
+
         // Check existing
-        $reminders = Reminder::find()
-            ->where(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid])
+        $reminders = CalendarReminder::find()
+             ->where([
+                'content_id' => $calendarEntry->content->id,
+                'contentcontainer_id' => $userContainer->id
+            ])
             ->all();
             
         if (count($reminders) > 0) {
@@ -588,21 +601,25 @@ class RoomController extends Controller
         } else {
             // Add Custom Reminders
             // 1. 33 Minutes
-            $r1 = new Reminder(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid]);
-            $r1->unit = Reminder::UNIT_MINUTE;
+            $r1 = new CalendarReminder();
+            $r1->content_id = $calendarEntry->content->id;
+            $r1->contentcontainer_id = $userContainer->id;
+            $r1->unit = CalendarReminder::UNIT_MINUTE;
             $r1->value = 33;
+            $r1->active = 1;
             $r1->save();
             
             // 2. 1 Day
-            $r2 = new Reminder(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid]);
-            $r2->unit = Reminder::UNIT_DAY;
+            $r2 = new CalendarReminder();
+            $r2->content_id = $calendarEntry->content->id;
+            $r2->contentcontainer_id = $userContainer->id;
+            $r2->unit = CalendarReminder::UNIT_DAY;
             $r2->value = 1;
+            $r2->active = 1;
             $r2->save();
             
             return $this->asJson(['success' => true, 'reminder' => true]);
         }
-        */
-        return $this->asJson(['success' => false, 'message' => 'Not implemented']);
     }
 
     /**
