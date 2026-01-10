@@ -105,6 +105,43 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
                                 ]) ?>
                             <?php endif; ?>
                         </div>
+
+                        
+                        <!-- Reminder Checkbox -->
+                        <div style="display: inline-block; margin-left: 15px; vertical-align: middle;">
+                             <label style="cursor: pointer; font-weight: normal; margin: 0;">
+                                <input type="checkbox" id="jitsi-reminder-cb" <?= (isset($hasReminder) && $hasReminder) ? 'checked' : '' ?> onchange="toggleJitsiReminder(this, <?= $stream->id ?>)">
+                                <span style="margin-left: 5px;"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Remind me (33m & 1d before)') ?></span>
+                            </label>
+                            
+                            <script>
+                            function toggleJitsiReminder(cb, streamId) {
+                                var url = "<?= Url::to(['/jitsi-meet-cloud-8x8/room/toggle-reminder']) ?>";
+                                url += "?id=" + streamId;
+                                
+                                $(cb).prop('disabled', true);
+                                
+                                $.ajax({
+                                    url: url,
+                                    type: 'POST',
+                                    dataType: 'json',
+                                    success: function(data) {
+                                        $(cb).prop('disabled', false);
+                                        if(data.success) {
+                                            $(cb).prop('checked', data.reminder);
+                                            humhub.modules.ui.status.success('<?= Yii::t('JitsiMeetCloud8x8Module.base', 'Reminder updated') ?>');
+                                        } else {
+                                            humhub.modules.ui.status.error('Error updating reminder');
+                                        }
+                                    },
+                                    error: function() {
+                                         $(cb).prop('disabled', false);
+                                         humhub.modules.ui.status.error('Error updating reminder');
+                                    }
+                                });
+                            }
+                            </script>
+                        </div>
                     <?php endif; ?>
                 </div>
 

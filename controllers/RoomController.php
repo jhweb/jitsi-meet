@@ -13,6 +13,7 @@ use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
 use humhub\modules\content\models\Content;
 use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
+use humhub\modules\calendar\models\Reminder;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
@@ -214,10 +215,12 @@ class RoomController extends Controller
                         
                         $calendarEntry->title = $model->title;
                         
-                        // Append Join Link to Description for Modal access
-                        $joinUrl = $model->getUrl();
-                        $joinLink = "### [JOIN WATCH ROOM]($joinUrl)";
-                        $calendarEntry->description = $model->description . "\n\n" . $joinLink;
+                        // Do not append Join Link to Description (User Request to prevent leak)
+                        // $joinUrl = $model->getUrl();
+                        // $joinLink = "### [JOIN WATCH ROOM]($joinUrl)";
+                        // $calendarEntry->description = $model->description . "\n\n" . $joinLink;
+                        
+                        $calendarEntry->description = $model->description;
                         
                         // Set Visibility (Public or Private)
                         $isPublic = Yii::$app->request->post('is_public');
@@ -534,8 +537,16 @@ class RoomController extends Controller
         if (!empty($attendeeIds)) {
             $attendees = \humhub\modules\user\models\User::find()
                 ->where(['id' => $attendeeIds])
-                ->limit(20) // Limit to 20 profile icons
+                ->limit(20) // Limit to 2 icons
                 ->all();
+        }
+
+        // Check if reminder is set
+        $hasReminder = false;
+        if (!Yii::$app->user->isGuest) {
+            $hasReminder = Reminder::find()
+                ->where(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
+                ->exists();
         }
 
         return $this->renderAjax('modal_event', [
@@ -544,7 +555,49 @@ class RoomController extends Controller
             'isAttending' => $isAttending,
             'attendees' => $attendees,
             'attendeeCount' => count($attendeeIds),
+            'hasReminder' => $hasReminder,
         ]);
+    }
+
+    /**
+     * Toggle Custom Reminder (33 min & 1 Day)
+     */
+    public function actionToggleReminder($id)
+    {
+        $this->forceLogin();
+        $stream = JitsiLiveStream::findOne($id);
+        if (!$stream || !$stream->calendarEntry) {
+            throw new \yii\web\NotFoundHttpException();
+        }
+        
+        $calendarEntry = $stream->calendarEntry;
+        $uid = Yii::$app->user->id;
+        
+        // Check existing
+        $reminders = Reminder::find()
+            ->where(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid])
+            ->all();
+            
+        if (count($reminders) > 0) {
+            // Remove
+            foreach ($reminders as $r) $r->delete();
+            return $this->asJson(['success' => true, 'reminder' => false]);
+        } else {
+            // Add Custom Reminders
+            // 1. 33 Minutes
+            $r1 = new Reminder(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid]);
+            $r1->unit = Reminder::UNIT_MINUTE;
+            $r1->value = 33;
+            $r1->save();
+            
+            // 2. 1 Day
+            $r2 = new Reminder(['object_model' => $calendarEntry->className(), 'object_id' => $calendarEntry->id, 'user_id' => $uid]);
+            $r2->unit = Reminder::UNIT_DAY;
+            $r2->value = 1;
+            $r2->save();
+            
+            return $this->asJson(['success' => true, 'reminder' => true]);
+        }
     }
 
     /**
