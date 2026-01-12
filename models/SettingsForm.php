@@ -32,6 +32,7 @@ class SettingsForm extends Model
     public $jaasEnableRecording;
     public $jaasEnableLivestreaming;
     public $jaasEnableModeration;
+    public $jaasWebhookDriftTolerance;
 
     // Permission default settings
     public $defaultRecordingEnabled;
@@ -66,6 +67,7 @@ class SettingsForm extends Model
             }"],
             [['mode'], 'in', 'range' => ['self_hosted', 'jaas']],
             [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath', 'jaasDomain', 'jaasWebhookSecret'], 'string'],
+            [['jaasWebhookDriftTolerance'], 'integer', 'min' => 0],
             [['jaasEnableRecording', 'jaasEnableLivestreaming', 'jaasEnableModeration'], 'boolean'],
             [['defaultRecordingEnabled', 'defaultLivestreamingEnabled', 'defaultModerationEnabled'], 'boolean'],
             [['enableLiveStreamWidget'], 'boolean'],
@@ -156,6 +158,7 @@ class SettingsForm extends Model
             'jaasKid' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS API Key (kid).'),
             'jaasPrivateKeyPath' => Yii::t('JitsiMeetCloud8x8Module.base', 'Filesystem path to the RS256 private key (not stored in DB).'),
             'jaasWebhookSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Secret from 8x8 Console for signature verification.'),
+            'jaasWebhookDriftTolerance' => Yii::t('JitsiMeetCloud8x8Module.base', 'Timestamp verification tolerance in seconds (default: 300). Useful for handling server clock drift.'),
             'jaasDomain' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS domain, default: 8x8.vc'),
             'jaasEnableRecording' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable recording feature for JaaS users.'),
             'jaasEnableLivestreaming' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable livestreaming feature for JaaS users.'),
@@ -241,6 +244,11 @@ class SettingsForm extends Model
         $this->jaasEnableRecording = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasEnableRecording');
         $this->jaasEnableLivestreaming = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasEnableLivestreaming');
         $this->jaasEnableModeration = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasEnableModeration');
+        
+        $this->jaasWebhookDriftTolerance = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
+        if (empty($this->jaasWebhookDriftTolerance) && $this->jaasWebhookDriftTolerance !== 0 && $this->jaasWebhookDriftTolerance !== '0') {
+            $this->jaasWebhookDriftTolerance = 300; // Default 5 minutes
+        }
 
         // Permission default settings
         $this->defaultRecordingEnabled = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('defaultRecordingEnabled', 0);
@@ -278,6 +286,7 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableRecording', (int)$this->jaasEnableRecording);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableLivestreaming', (int)$this->jaasEnableLivestreaming);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableModeration', (int)$this->jaasEnableModeration);
+        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasWebhookDriftTolerance', (int)$this->jaasWebhookDriftTolerance);
 
         // Permission default settings
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('defaultRecordingEnabled', (int)$this->defaultRecordingEnabled);

@@ -195,10 +195,16 @@ class WebhookController extends Controller
         // Note: 8x8 timestamp is in seconds (or ms? Docs say "t=1632490060" which looks like seconds)
         // Docs Example: t=1632490060.
         // Payload timestamp: 1632490058278 (ms).
+        // Payload timestamp: 1632490058278 (ms).
         // Header 't' is likely seconds.
+        $tolerance = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
+        if (empty($tolerance) && $tolerance !== 0) {
+             $tolerance = 300;
+        }
+
         $now = time();
-        if (abs($now - $timestamp) > 300) {
-             Yii::warning("Jitsi Webhook: Replay attack detected or clock drift. timestamp=$timestamp, now=$now", 'jitsi-meet-cloud-8x8');
+        if (abs($now - $timestamp) > $tolerance) {
+             Yii::warning("Jitsi Webhook: Replay attack detected or clock drift. timestamp=$timestamp, now=$now, tolerance=$tolerance", 'jitsi-meet-cloud-8x8');
              return false;
         }
 
