@@ -15,7 +15,10 @@ class StreamGuide extends Widget
             return '';
         }
 
-        $forceStart = Yii::$app->request->get('tour') ? true : false;
+        $forceStart = false;
+        if (Yii::$app->request instanceof \yii\web\Request) {
+            $forceStart = Yii::$app->request->get('tour') ? true : false;
+        }
         
         return $this->render('streamGuide', ['forceStart' => $forceStart]);
     }
