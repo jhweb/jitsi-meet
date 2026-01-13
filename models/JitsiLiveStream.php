@@ -119,7 +119,14 @@ class JitsiLiveStream extends ActiveRecord
             $this->created_at = new \yii\db\Expression('NOW()');
             // Generate UID for calendar integration if not set
             if (empty($this->uid)) {
-                $this->uid = uniqid('jitsi-') . '@' . Yii::$app->request->hostName;
+                $host = 'cli';
+                if (Yii::$app->request instanceof \yii\web\Request) {
+                    $host = Yii::$app->request->hostName;
+                } else {
+                    $host = Yii::$app->params['settings']['baseUrl'] ?? 'console';
+                    $host = preg_replace('#^https?://#', '', $host);
+                }
+                $this->uid = uniqid('jitsi-') . '@' . $host;
             }
         }
         $this->updated_at = new \yii\db\Expression('NOW()');
