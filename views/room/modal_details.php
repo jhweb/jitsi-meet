@@ -172,6 +172,36 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                         </div>
                          <div class="col-md-12">
                             <hr>
+                            <?php if ($hasChat && !empty($chatLogContent)): ?>
+                                <?php 
+                                    $chatMessages = json_decode($chatLogContent, true);
+                                    if (is_array($chatMessages) && count($chatMessages) > 0):
+                                ?>
+                                <h4><i class="fa fa-comments"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat History') ?></h4>
+                                <div class="chat-history-container" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--jitsi-border-color); border-radius: 4px; padding: 10px; background: var(--jitsi-card-bg); margin-bottom: 20px;">
+                                    <ul class="media-list">
+                                        <?php foreach ($chatMessages as $msg): 
+                                            // Handle various 8x8 chat formats
+                                            $sender = $msg['name'] ?? $msg['displayName'] ?? 'Unknown';
+                                            $text = $msg['message'] ?? $msg['text'] ?? '';
+                                            $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime(date('Y-m-d H:i:s', $msg['timestamp'] / 1000), 'short') : '';
+                                        ?>
+                                        <li class="media" style="margin-top: 10px; border-bottom: 1px solid var(--jitsi-border-color); padding-bottom: 5px;">
+                                            <div class="media-body">
+                                                <h5 class="media-heading" style="font-size: 13px; font-weight: bold;">
+                                                    <?= Html::encode($sender) ?> 
+                                                    <small class="pull-right text-muted"><?= $time ?></small>
+                                                </h5>
+                                                <p style="font-size: 13px;"><?= Html::encode($text) ?></p>
+                                            </div>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                                <hr>
+                                <?php endif; ?>
+                            <?php endif; ?>
+
                             <?php if (!empty($polls)): ?>
                                 <h4><i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Poll Results') ?></h4>
                                 <?php foreach ($polls as $poll): ?>

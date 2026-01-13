@@ -486,7 +486,14 @@ class RoomController extends Controller
         }
 
         $chatLogContent = null;
-        // chatLogContent fetch removed as we now link directly to the file without pre-checking content
+        if (!empty($stream->chat_log_url)) {
+            // Fetch chat log with a 3-second timeout to check availability/content
+            $context = stream_context_create(['http' => ['timeout' => 3]]); 
+            $content = @file_get_contents($stream->chat_log_url, false, $context);
+            if ($content !== false) {
+                $chatLogContent = $content;
+            }
+        }
 
         $screenSharingContent = [];
         if (!empty($stream->screen_sharing_url)) {
