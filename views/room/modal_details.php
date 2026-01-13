@@ -13,7 +13,8 @@ use humhub\modules\user\widgets\Image;
 $hasRecording = (!empty($stream->recording_url) || $stream->has_recording);
 $hasHighlights = !empty($stream->highlights_url);
 $hasChat = !empty($stream->chat_log_url);
-$hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions));
+$polls = $stream->getPolls();
+$hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls));
 $hasTranscript = !empty($stream->transcription_url);
 $hasExtraFiles = !empty($stream->file_urls);
 
@@ -130,13 +131,11 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                         <?php endif; ?>
 
                         <?php if ($hasChat): ?>
-                             <?php if ($chatLogContent): ?>
                                 <!-- Chat link usually opens raw json/txt -->
                                 <a href="<?= Html::encode($stream->chat_log_url) ?>" class="list-group-item" target="_blank" download>
                                     <h4 class="list-group-item-heading"><i class="fa fa-comments-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?></h4>
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the full chat history.') ?></p>
                                 </a>
-                             <?php endif; ?>
                         <?php endif; ?>
 
                         <?php if ($hasTranscript): ?>
@@ -173,10 +172,50 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                         </div>
                          <div class="col-md-12">
                             <hr>
-                            <?php 
-                                // If we have session stats JSON or logic, display here.
-                                // For now, simple placeholder or reactions if available.
-                            ?>
+                            <?php if (!empty($polls)): ?>
+                                <h4><i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Poll Results') ?></h4>
+                                <?php foreach ($polls as $poll): ?>
+                                    <?php 
+                                        $options = $poll['options'] ?? [];
+                                        $votes = $poll['votes'] ?? [];
+                                        $totalVotes = count($votes);
+                                        
+                                        // Aggregate
+                                        $results = [];
+                                        foreach ($options as $opt) $results[$opt['key']] = 0;
+                                        foreach ($votes as $vote) {
+                                            foreach ($vote['keys'] as $k) {
+                                                if (isset($results[$k])) $results[$k]++;
+                                            }
+                                        }
+                                    ?>
+                                    <div class="panel panel-default" style="margin-bottom: 10px;">
+                                        <div class="panel-heading" style="padding: 10px; font-weight: bold;">
+                                            <?= Html::encode($poll['question']) ?>
+                                            <span class="pull-right badge"><?= $totalVotes ?> votes</span>
+                                        </div>
+                                        <ul class="list-group">
+                                            <?php foreach ($options as $opt): 
+                                                $count = $results[$opt['key']] ?? 0;
+                                                $percent = ($totalVotes > 0) ? round(($count / $totalVotes) * 100) : 0;
+                                            ?>
+                                            <li class="list-group-item" style="border: none; padding: 8px 15px;">
+                                                <div style="margin-bottom: 2px;">
+                                                    <?= Html::encode($opt['name']) ?>
+                                                    <span class="pull-right text-muted" style="font-size: 11px;"><?= $count ?> (<?= $percent ?>%)</span>
+                                                </div>
+                                                <div class="progress" style="height: 6px; margin-bottom: 0;">
+                                                    <div class="progress-bar progress-bar-info" role="progressbar" 
+                                                         style="width: <?= $percent ?>%; background-color: var(--primary);"></div>
+                                                </div>
+                                            </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="text-muted text-center"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No polls created during this session.') ?></p>
+                            <?php endif; ?>
                          </div>
                     </div>
                 </div>
