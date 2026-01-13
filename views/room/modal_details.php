@@ -85,7 +85,7 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                                 // Simple HTML5 video or basic link depending on URL format
                                 // Assuming .mp4 direct link for now based on previous context, or external player
                             ?>
-                             <video width="100%" controls poster="<?= $stream->getThumbnailUrl() ?>" style="background: #000; border-radius: 8px;">
+                             <video width="100%" controls <?php if($thumb = $stream->getThumbnailUrl()): ?>poster="<?= Html::encode($thumb) ?>"<?php endif; ?> style="background: #000; border-radius: 8px; preload="metadata"">
                                 <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
                                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
                             </video> 
