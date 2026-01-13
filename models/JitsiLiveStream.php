@@ -396,4 +396,15 @@ class JitsiLiveStream extends ActiveRecord
         $reactions = json_decode($this->reactions, true);
         return is_array($reactions) ? $reactions : [];
     }
+
+    /**
+     * Get thumbnail URL for the stream
+     * @return string|null
+     */
+    public function getThumbnailUrl()
+    {
+        // Currently 8x8 does not provide a direct thumbnail URL in the webhook metadata.
+        // We return null so the video player uses its default behavior (first frame or black).
+        return null;
+    }
 }
