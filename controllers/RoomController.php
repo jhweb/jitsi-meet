@@ -35,6 +35,15 @@ class RoomController extends Controller
         ];
     }
 
+    /**
+     * Modal to create a new stream (Join Room)
+     */
+    public function actionCreate()
+    {
+        $model = new JoinRoomForm();
+        return $this->renderAjax('create_modal', ['model' => $model]);
+    }
+
     public function actionIndex()
     {
         $model = new JoinRoomForm();
