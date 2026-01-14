@@ -15,7 +15,7 @@ use yii\helpers\Url;
 $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->user->id);
 ?>
 
-<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar"></i> ' . Html::encode($calendarEntry->title)]); ?>
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar"></i> ' . Html::encode($calendarEntry->title), 'class' => 'jitsi-modal-overrides']); ?>
 
 <div class="modal-body">
     <div class="event-details">

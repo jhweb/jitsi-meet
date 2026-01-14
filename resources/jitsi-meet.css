@@ -6,13 +6,14 @@
     --jitsi-primary-hover: #5d752e;
     --jitsi-accent: #8cb321;
     --jitsi-accent-hover: #97d271;
-    
+
     /* Functional Colors */
     --jitsi-live: #ea2b2b;
     --jitsi-live-glow: rgba(234, 43, 43, 0.4);
-    --jitsi-scheduled: #738F3B; /* Use primary for scheduled */
+    --jitsi-scheduled: #738F3B;
+    /* Use primary for scheduled */
     --jitsi-ended: #888888;
-    
+
     /* Backgrounds & Text - Light Theme Default */
     --jitsi-bg: #f5f5f5;
     --jitsi-card-bg: #ffffff;
@@ -35,7 +36,9 @@
 }
 
 /* Explicit Dark Theme Overrides (if body class present) */
-body.theme-dark, body.dark-mode, [data-theme='dark'] {
+body.theme-dark,
+body.dark-mode,
+[data-theme='dark'] {
     --jitsi-bg: #121212;
     --jitsi-card-bg: #1e1e1e;
     --jitsi-text-main: #eeeeee;
@@ -88,7 +91,7 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
 }
 
 .jitsi-filter-btn:hover {
-    background: rgba(0,0,0,0.05);
+    background: rgba(0, 0, 0, 0.05);
     color: var(--jitsi-text-main);
 }
 
@@ -122,6 +125,7 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     background: rgba(115, 143, 59, 0.1);
     color: var(--jitsi-primary) !important;
 }
+
 .jitsi-btn-schedule:hover {
     background: rgba(115, 143, 59, 0.2);
 }
@@ -130,6 +134,7 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     background: var(--jitsi-accent);
     color: #fff !important;
 }
+
 .jitsi-btn-create:hover {
     background: var(--jitsi-accent-hover);
     box-shadow: 0 4px 12px rgba(140, 179, 33, 0.4);
@@ -160,7 +165,7 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
 
 .stream-card-v2:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Live State Styling */
@@ -168,10 +173,14 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     border: 1px solid var(--jitsi-live);
     box-shadow: 0 0 0 1px var(--jitsi-live), var(--jitsi-shadow);
 }
+
 .stream-card-v2.live::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     border-radius: 12px;
     box-shadow: inset 0 0 20px var(--jitsi-live-glow);
     pointer-events: none;
@@ -191,12 +200,14 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     align-items: center;
     gap: 10px;
 }
+
 .creator-avatar img {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
 }
+
 .creator-name {
     font-size: 13px;
     font-weight: 600;
@@ -211,9 +222,21 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.status-badge.live { background: var(--jitsi-live); color: #fff; }
-.status-badge.scheduled { background: rgba(115, 143, 59, 0.15); color: var(--jitsi-primary); }
-.status-badge.ended { background: rgba(0,0,0,0.08); color: var(--jitsi-text-secondary); }
+
+.status-badge.live {
+    background: var(--jitsi-live);
+    color: #fff;
+}
+
+.status-badge.scheduled {
+    background: rgba(115, 143, 59, 0.15);
+    color: var(--jitsi-primary);
+}
+
+.status-badge.ended {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--jitsi-text-secondary);
+}
 
 /* Body */
 .col-body {
@@ -244,9 +267,11 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
 
 .stream-meta-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns for meta stats */
+    grid-template-columns: 1fr 1fr;
+    /* Two columns for meta stats */
     gap: 8px;
-    margin-top: auto; /* Push to bottom of body */
+    margin-top: auto;
+    /* Push to bottom of body */
 }
 
 .meta-item {
@@ -256,7 +281,11 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     align-items: center;
     gap: 6px;
 }
-.meta-item i { width: 14px; text-align: center; }
+
+.meta-item i {
+    width: 14px;
+    text-align: center;
+}
 
 /* In-progress timer for scheduled */
 .countdown-timer {
@@ -295,15 +324,18 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     color: #fff !important;
     animation: pulse-red 2s infinite;
 }
+
 .card-action-btn.attend {
     background: var(--jitsi-primary);
     color: #fff !important;
 }
+
 .card-action-btn.view {
     background: var(--jitsi-card-bg);
     border: 1px solid var(--jitsi-border);
     color: var(--jitsi-text-main) !important;
 }
+
 .card-action-btn.view:hover {
     background: var(--jitsi-bg);
     border-color: var(--jitsi-text-secondary);
@@ -315,20 +347,30 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     gap: 10px;
     padding-top: 5px;
 }
+
 .icon-indicator {
     color: var(--jitsi-text-secondary);
     font-size: 14px;
     opacity: 0.5;
 }
+
 .icon-indicator.active {
     opacity: 1;
     color: var(--jitsi-accent);
 }
 
 @keyframes pulse-red {
-    0% { box-shadow: 0 0 0 0 rgba(234, 43, 43, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(234, 43, 43, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(234, 43, 43, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(234, 43, 43, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(234, 43, 43, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(234, 43, 43, 0);
+    }
 }
 
 /* --- Modals --- */
@@ -363,17 +405,20 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
     text-align: center;
     margin-top: 30px;
 }
-.jitsi-pagination .pagination > li > a {
+
+.jitsi-pagination .pagination>li>a {
     background: var(--jitsi-card-bg);
     border-color: var(--jitsi-border);
     color: var(--jitsi-text-main);
 }
-.jitsi-pagination .pagination > .active > a {
+
+.jitsi-pagination .pagination>.active>a {
     background: var(--jitsi-primary);
     border-color: var(--jitsi-primary);
     color: #fff;
 }
-.jitsi-pagination .pagination > li > a:hover {
+
+.jitsi-pagination .pagination>li>a:hover {
     background: var(--jitsi-bg);
 }
 
@@ -390,7 +435,59 @@ body.theme-dark, body.dark-mode, [data-theme='dark'] {
 }
 
 @keyframes blinkRed {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
+
+/* --- Dark Mode Overrides for Specific Elements --- */
+
+/* Fix Event Description Box in Dark Mode */
+.event-description {
+    background: var(--jitsi-bg) !important;
+    color: var(--jitsi-text-main) !important;
+    border: 1px solid var(--jitsi-border);
+}
+
+/* Force Green Buttons in Jitsi Contexts (Attend, Save) */
+.jitsi-modal-overrides .btn-primary,
+.jitsi-stream-details .btn-primary,
+.jitsi-create-modal .btn-primary {
+    background-color: var(--jitsi-primary) !important;
+    border-color: var(--jitsi-primary) !important;
+    color: #fff !important;
+}
+
+.jitsi-modal-overrides .btn-primary:hover,
+.jitsi-stream-details .btn-primary:hover,
+.jitsi-create-modal .btn-primary:hover {
+    background-color: var(--jitsi-primary-hover) !important;
+    border-color: var(--jitsi-primary-hover) !important;
+}
+
+/* Override HumHub's default modal close button visibility in dark mode if needed */
+.jitsi-modal-overrides .close {
+    text-shadow: none;
+    color: var(--jitsi-text-main);
+    opacity: 0.8;
+}
+
+/* Make sure text inputs in modals are readable in dark mode */
+.jitsi-modal-overrides .form-control {
+    background-color: var(--jitsi-bg);
+    color: var(--jitsi-text-main);
+    border-color: var(--jitsi-border);
+}
+
+/* Fix "Save" button in general HumHub modals if they are within our module wrapper (might not catch the global Theme modal, but helps consistency) */
+/* Note: The user's screen shot shows the Theme Preference modal. That is likely outside our module's scope class. 
+   However, we can try to target it if it loads on our page, but safer to stick to our module scope first. 
+   The user explicitly asked "should be green as ohers". */
