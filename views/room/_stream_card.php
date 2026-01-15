@@ -35,10 +35,12 @@ if ($isEnded) {
     $hasRecording = ($stream->has_recording || !empty($stream->recording_url));
     $hasHighlights = !empty($stream->highlights_url);
     $hasChat = !empty($stream->chat_log_url);
-    $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions));
+    $polls = $stream->getPolls();
+    $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls) || $hasChat);
     $hasTranscript = !empty($stream->transcription_url);
     $hasExtraFiles = !empty($stream->file_urls);
-
+    
+    // Show download button logic: show if there is ANY data to show
     $showDownloadButton = ($hasRecording || $hasHighlights || $hasChat || $hasSessionData || $hasTranscript || $hasExtraFiles);
 }
 
@@ -232,9 +234,11 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         <?php else: /* Ended */ ?>
             <?php if ($showDownloadButton): ?>
                 <?php if ($isExpired): ?>
-                     <div class="card-action-btn view" style="opacity: 0.6; cursor: not-allowed;" title="<?= Yii::t('JitsiMeetCloud8x8Module.base', '24-hour download period has expired') ?>">
-                        <i class="fa fa-ban"></i> LINK EXPIRED
-                    </div>
+                     <?= ModalButton::defaultType('<i class="fa fa-ban"></i> LINK EXPIRED')
+                        ->load(Url::to(['details', 'id' => $stream->id]))
+                        ->cssClass('card-action-btn view')
+                        ->options(['title' => Yii::t('JitsiMeetCloud8x8Module.base', '24-hour download period has expired, but session data is available')])
+                    ?>
                 <?php else: ?>
                     <?= ModalButton::defaultType('<i class="fa fa-download"></i> DOWNLOAD FILES')
                         ->load(Url::to(['details', 'id' => $stream->id]))

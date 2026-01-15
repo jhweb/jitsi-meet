@@ -14,13 +14,14 @@ $hasRecording = (!empty($stream->recording_url) || $stream->has_recording);
 $hasHighlights = !empty($stream->highlights_url);
 $hasChat = !empty($stream->chat_log_url);
 $polls = $stream->getPolls();
-$hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls));
+$hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls) || $hasChat);
 $hasTranscript = !empty($stream->transcription_url);
 $hasExtraFiles = !empty($stream->file_urls);
 
 // Status checks (processing/expired)
 $isProcessing = false;
 $isExpired = false;
+$secondsRemaining = 0;
 
 if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_ENDED) {
     if (!empty($stream->end_time)) {
@@ -34,6 +35,8 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
         // Expiration Check (> 24 hours)
         if ($secondsSinceEnd > (24 * 60 * 60)) {
             $isExpired = true;
+        } else {
+            $secondsRemaining = (24 * 60 * 60) - $secondsSinceEnd;
         }
     }
 }
@@ -49,6 +52,16 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Streamed on {date}', ['date' => Yii::$app->formatter->asDate($stream->start_time, 'long')]) ?>
             </small>
         </h4>
+        
+        <!-- 24h Expiration Countdown -->
+        <?php if (!$isExpired && !$isProcessing && $secondsRemaining > 0): ?>
+        <div style="margin-top: 10px; font-size: 13px; color: #e67e22; background: rgba(230, 126, 34, 0.1); padding: 5px 10px; border-radius: 4px; display: inline-block;">
+            <i class="fa fa-clock-o"></i> 
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Links expire in {time}', [
+                'time' => Yii::$app->formatter->asDuration($secondsRemaining)
+            ]) ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="modal-body">
@@ -158,7 +171,6 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                         <?php endif; ?>
 
                         <?php if ($hasChat): ?>
-                                <!-- Chat log usually expires too? Assuming yes -->
                                 <?php if (!$isExpired): ?>
                                     <a href="<?= Html::encode($stream->chat_log_url) ?>" class="list-group-item" target="_blank" download>
                                         <h4 class="list-group-item-heading"><i class="fa fa-comments-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?></h4>
@@ -299,6 +311,29 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
     </div>
     
     <div class="modal-footer">
+        <?php 
+        // Delete Button Logic (Creator/Admin)
+        $canDelete = false;
+        if (!Yii::$app->user->isGuest) {
+            if ($stream->creator_id == Yii::$app->user->id) {
+                $canDelete = true;
+            } elseif (Yii::$app->user->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->space && $stream->space->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->calendarEntry && $stream->calendarEntry->content->container->can(\humhub\modules\content\permissions\ManageContent::class)) {
+                $canDelete = true;
+            }
+        }
+        
+        if ($canDelete): ?>
+            <?= Html::a(Yii::t('JitsiMeetCloud8x8Module.base', 'Delete'), \yii\helpers\Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
+                'class' => 'btn btn-danger pull-left',
+                'data-method' => 'post',
+                'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this stream?'),
+            ]) ?>
+        <?php endif; ?>
+
         <?= ModalButton::cancel(Yii::t('JitsiMeetCloud8x8Module.base', 'Close')) ?>
     </div>
 

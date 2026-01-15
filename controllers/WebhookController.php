@@ -262,8 +262,8 @@ class WebhookController extends Controller
                 
                 // Initialize participant count with creator
                 if ($stream->isNewRecord || $stream->participant_count == 0) {
-                     $stream->participant_count = 1;
-                     $stream->active_count = 1;
+                     $stream->participant_count = 0;
+                     $stream->active_count = 0;
                      
                      // Pre-fill dedup cache so we don't double count when PARTICIPANT_JOINED arrives for creator
                      // We need the stream ID, but we might not have it if new record.
