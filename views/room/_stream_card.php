@@ -77,13 +77,12 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         }
     }
     
-    if ($canDelete && $isScheduled): ?>
+    if ($canDelete && ($isScheduled || $isEnded)): ?>
         <?= Html::a('<i class="fa fa-times"></i>', Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
             'class' => 'stream-delete-btn',
             'data-method' => 'post',
-            'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this scheduled stream?'),
-            'title' => Yii::t('JitsiMeetCloud8x8Module.base', 'Delete Stream'),
-            'style' => 'position: absolute; top: 10px; right: 35px; color: #ff0000; cursor: pointer; z-index: 100; font-size: 14px;'
+            'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this stream?'),
+            'title' => Yii::t('JitsiMeetCloud8x8Module.base', 'Delete Stream')
         ]) ?>
     <?php endif; ?>
 
@@ -127,6 +126,21 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
                     <i class="fa fa-users"></i> 
                     Users: <?= $stream->active_count > 0 ? $stream->active_count : 0 ?>
                 </div>
+                <!-- Avatars -->
+                <?php $participants = $stream->getRecentParticipants(5); ?>
+                <?php if (!empty($participants)): ?>
+                    <div class="avatar-stack" style="margin-left: 2px;">
+                        <?php foreach ($participants as $p): ?>
+                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                <?php if ($p['user']): ?>
+                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                <?php else: ?>
+                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php elseif ($isScheduled): ?>
                  <div class="meta-item" style="grid-column: span 2;">
                      <div class="countdown-timer">
@@ -148,6 +162,21 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
                 <div class="meta-item">
                     <i class="fa fa-users"></i> <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
                 </div>
+                 <!-- Avatars -->
+                <?php $participants = $stream->getRecentParticipants(5); ?>
+                <?php if (!empty($participants)): ?>
+                    <div class="avatar-stack" style="margin-left: 2px;">
+                        <?php foreach ($participants as $p): ?>
+                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                <?php if ($p['user']): ?>
+                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                <?php else: ?>
+                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -202,10 +231,16 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
 
         <?php else: /* Ended */ ?>
             <?php if ($showDownloadButton): ?>
-                <?= ModalButton::defaultType('<i class="fa fa-download"></i> DOWNLOAD FILES')
-                    ->load(Url::to(['details', 'id' => $stream->id]))
-                    ->cssClass('card-action-btn view')
-                ?>
+                <?php if ($isExpired): ?>
+                     <div class="card-action-btn view" style="opacity: 0.6; cursor: not-allowed;" title="<?= Yii::t('JitsiMeetCloud8x8Module.base', '24-hour download period has expired') ?>">
+                        <i class="fa fa-ban"></i> LINK EXPIRED
+                    </div>
+                <?php else: ?>
+                    <?= ModalButton::defaultType('<i class="fa fa-download"></i> DOWNLOAD FILES')
+                        ->load(Url::to(['details', 'id' => $stream->id]))
+                        ->cssClass('card-action-btn view')
+                    ?>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="card-action-btn view" style="opacity: 0.5; cursor: default;">
                     <i class="fa fa-ban"></i> No Files Available

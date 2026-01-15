@@ -20,13 +20,23 @@ $hasExtraFiles = !empty($stream->file_urls);
 
 // Status checks (processing/expired)
 $isProcessing = false;
-if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_ENDED) {
-    // If ended recently (< 1 hour) and no data, maybe processing
-    if (time() - strtotime($stream->end_time) < 3600) {
-        $isProcessing = true;
+$isExpired = false;
+
+if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_ENDED) {
+    if (!empty($stream->end_time)) {
+        $secondsSinceEnd = time() - strtotime($stream->end_time);
+        
+        // Processing Check (< 1 hour and no data)
+        if (!$hasRecording && !$hasHighlights && !$hasChat && $secondsSinceEnd < 3600) {
+            $isProcessing = true;
+        }
+        
+        // Expiration Check (> 24 hours)
+        if ($secondsSinceEnd > (24 * 60 * 60)) {
+            $isExpired = true;
+        }
     }
 }
-
 ?>
 
 <?php ModalDialog::begin(['size' => 'large', 'class' => 'jitsi-modal-overrides jitsi-stream-details']) ?>
@@ -51,7 +61,7 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
 
             <div class="tab-menu">
                 <ul class="nav nav-tabs" role="tablist">
-                    <?php if ($hasRecording || $hasHighlights): ?>
+                    <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
                     <li role="presentation" class="active">
                         <a href="#tab-watch" aria-controls="tab-watch" role="tab" data-toggle="tab">
                             <i class="fa fa-play-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Watch Replay') ?>
@@ -59,7 +69,7 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                     </li>
                     <?php endif; ?>
                     
-                    <li role="presentation" class="<?= (!$hasRecording && !$hasHighlights) ? 'active' : '' ?>">
+                    <li role="presentation" class="<?= (!$isExpired && !$hasRecording && !$hasHighlights) ? 'active' : '' ?>">
                         <a href="#tab-downloads" aria-controls="tab-downloads" role="tab" data-toggle="tab">
                             <i class="fa fa-download"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Downloads') ?>
                         </a>
@@ -78,14 +88,10 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
             <div class="tab-content" style="padding-top: 20px;">
                 
                 <!-- WATCH TAB -->
-                <?php if ($hasRecording || $hasHighlights): ?>
+                <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
                 <div role="tabpanel" class="tab-pane active" id="tab-watch">
                     <?php if ($hasRecording): ?>
                         <div class="video-container" style="margin-bottom: 20px;">
-                            <?php 
-                                // Simple HTML5 video or basic link depending on URL format
-                                // Assuming .mp4 direct link for now based on previous context, or external player
-                            ?>
                              <video width="100%" controls <?php if($thumb = $stream->getThumbnailUrl()): ?>poster="<?= Html::encode($thumb) ?>"<?php endif; ?> style="background: #000; border-radius: 8px; preload="metadata"">
                                 <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
                                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
@@ -107,20 +113,41 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                 <?php endif; ?>
 
                 <!-- DOWNLOADS TAB -->
-                <div role="tabpanel" class="tab-pane <?= (!$hasRecording && !$hasHighlights) ? 'active' : '' ?>" id="tab-downloads">
+                <div role="tabpanel" class="tab-pane <?= (!$isExpired && !$hasRecording && !$hasHighlights) ? 'active' : '' ?>" id="tab-downloads">
+                    <?php if ($isExpired): ?>
+                        <div class="alert alert-warning" style="margin-bottom: 20px;">
+                            <i class="fa fa-exclamation-triangle"></i> 
+                            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'The download period for this stream has expired (24 hours). Files are no longer available from the cloud cache.') ?>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="list-group">
                         <?php if ($hasRecording): ?>
-                            <a href="<?= Html::encode($stream->recording_url) ?>" class="list-group-item" download target="_blank">
-                                <h4 class="list-group-item-heading"><i class="fa fa-file-video-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording') ?></h4>
-                                <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the MP4 video file of the entire session.') ?></p>
-                            </a>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->recording_url) ?>" class="list-group-item" download target="_blank">
+                                    <h4 class="list-group-item-heading"><i class="fa fa-file-video-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the MP4 video file of the entire session.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
 
                         <?php if ($hasHighlights): ?>
-                            <a href="<?= Html::encode($stream->highlights_url) ?>" class="list-group-item" download target="_blank">
-                                <h4 class="list-group-item-heading"><i class="fa fa-film"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video') ?></h4>
-                                <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Auto-generated highlights summary.') ?></p>
-                            </a>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->highlights_url) ?>" class="list-group-item" download target="_blank">
+                                    <h4 class="list-group-item-heading"><i class="fa fa-film"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Auto-generated highlights summary.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                         
                         <?php if (!empty($stream->ytstream_url)): ?>
@@ -131,18 +158,32 @@ if (!$hasRecording && !$hasHighlights && !$hasChat && $stream->status == \humhub
                         <?php endif; ?>
 
                         <?php if ($hasChat): ?>
-                                <!-- Chat link usually opens raw json/txt -->
-                                <a href="<?= Html::encode($stream->chat_log_url) ?>" class="list-group-item" target="_blank" download>
-                                    <h4 class="list-group-item-heading"><i class="fa fa-comments-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?></h4>
-                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the full chat history.') ?></p>
-                                </a>
+                                <!-- Chat log usually expires too? Assuming yes -->
+                                <?php if (!$isExpired): ?>
+                                    <a href="<?= Html::encode($stream->chat_log_url) ?>" class="list-group-item" target="_blank" download>
+                                        <h4 class="list-group-item-heading"><i class="fa fa-comments-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?></h4>
+                                        <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the full chat history.') ?></p>
+                                    </a>
+                                <?php else: ?>
+                                    <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                        <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log (Expired)') ?></h4>
+                                        <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                    </div>
+                                <?php endif; ?>
                         <?php endif; ?>
 
                         <?php if ($hasTranscript): ?>
-                            <a href="<?= Html::encode($stream->transcription_url) ?>" class="list-group-item" target="_blank" download>
-                                <h4 class="list-group-item-heading"><i class="fa fa-file-text-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription') ?></h4>
-                                <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download text transcription.') ?></p>
-                            </a>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->transcription_url) ?>" class="list-group-item" target="_blank" download>
+                                    <h4 class="list-group-item-heading"><i class="fa fa-file-text-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download text transcription.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                     
