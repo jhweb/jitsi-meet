@@ -141,6 +141,9 @@ class WebhookController extends Controller
             case 'RTCSTATS_UPLOADED':
                 $this->handleRtcstatsUploaded($roomName, $payload);
                 break;
+            case 'FEEDBACK':
+                $this->handleFeedback($roomName, $payload);
+                break;
             case 'SETTINGS_PROVISIONING':
                 return $this->handleSettingsProvisioning($roomName, $payload);
             default:
@@ -714,6 +717,37 @@ class WebhookController extends Controller
          $this->updateStreamMetadata($roomName, $payload, 'rtcstats_url');
     }
     
+    private function handleFeedback($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: FEEDBACK for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $data = $payload['data'] ?? [];
+
+        if (empty($data)) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $currentFeedback = json_decode($stream->feedback, true) ?? [];
+            
+            // Append new feedback
+            $currentFeedback[] = [
+                'rating' => $data['rating'] ?? 0,
+                'comment' => $data['comments'] ?? '',
+                'userId' => $data['userId'] ?? 'unknown',
+                'timestamp' => time()
+            ];
+
+            $stream->feedback = json_encode($currentFeedback);
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Saved FEEDBACK for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            } else {
+                 Yii::error("Jitsi Webhook: Failed to save FEEDBACK. Errors: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            }
+        }
+    }
+
     private function handleLiveStreamStarted($roomName, $payload)
     {
         Yii::info("Jitsi Webhook: LIVE_STREAM_STARTED for $roomName", 'jitsi-meet-cloud-8x8');

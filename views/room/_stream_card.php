@@ -234,7 +234,7 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         <?php else: /* Ended */ ?>
             <?php if ($showDownloadButton): ?>
                 <?php if ($isExpired): ?>
-                     <?= ModalButton::defaultType('<i class="fa fa-ban"></i> LINK EXPIRED')
+                     <?= ModalButton::defaultType('<i class="fa fa-eye"></i> VIEW DETAILS')
                         ->load(Url::to(['details', 'id' => $stream->id]))
                         ->cssClass('card-action-btn view')
                         ->options(['title' => Yii::t('JitsiMeetCloud8x8Module.base', '24-hour download period has expired, but session data is available')])

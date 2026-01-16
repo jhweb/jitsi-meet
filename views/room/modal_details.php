@@ -17,6 +17,8 @@ $polls = $stream->getPolls();
 $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls) || $hasChat);
 $hasTranscript = !empty($stream->transcription_url);
 $hasExtraFiles = !empty($stream->file_urls);
+$feedback = $stream->getFeedback();
+$hasFeedback = !empty($feedback);
 
 // Status checks (processing/expired)
 $isProcessing = false;
@@ -92,6 +94,14 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                     <li role="presentation">
                         <a href="#tab-session" aria-controls="tab-session" role="tab" data-toggle="tab">
                             <i class="fa fa-bar-chart"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Session Data') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
+                    <?php if ($hasFeedback): ?>
+                    <li role="presentation">
+                        <a href="#tab-feedback" aria-controls="tab-feedback" role="tab" data-toggle="tab">
+                            <i class="fa fa-star"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Feedback') ?>
                         </a>
                     </li>
                     <?php endif; ?>
@@ -222,6 +232,25 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                     <td><strong><?= $stream->active_count ?></strong></td>
                                 </tr>
                             </table>
+                            
+                            <!-- Avatars -->
+                            <?php $participants = $stream->getRecentParticipants(10); ?>
+                            <?php if (!empty($participants)): ?>
+                                <div style="margin-top: 10px;">
+                                    <label><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Recent Participants') ?></label>
+                                    <div class="avatar-stack" style="margin-left: 2px;">
+                                        <?php foreach ($participants as $p): ?>
+                                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                                <?php if ($p['user']): ?>
+                                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                                <?php else: ?>
+                                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                          <div class="col-md-12">
                             <hr>
@@ -300,6 +329,44 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                 <p class="text-muted text-center"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No polls created during this session.') ?></p>
                             <?php endif; ?>
                          </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- FEEDBACK TAB -->
+                <?php if ($hasFeedback): ?>
+                <div role="tabpanel" class="tab-pane" id="tab-feedback">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4><i class="fa fa-star"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'User Feedback') ?></h4>
+                            <div class="list-group">
+                                <?php foreach ($feedback as $fb): ?>
+                                    <div class="list-group-item">
+                                        <div class="row">
+                                             <div class="col-xs-2 text-center">
+                                                 <h2 style="margin: 0; color: #f1c40f;"><?= $fb['rating'] ?><small>/5</small></h2>
+                                                 <div class="rating-stars" style="color: #f1c40f;">
+                                                     <?php for($i=1; $i<=5; $i++): ?>
+                                                         <i class="fa fa-star<?= ($i <= $fb['rating']) ? '' : '-o' ?>"></i>
+                                                     <?php endfor; ?>
+                                                 </div>
+                                             </div>
+                                             <div class="col-xs-10">
+                                                 <p class="list-group-item-text" style="font-size: 14px; margin-top: 5px;">
+                                                     <?= !empty($fb['comment']) ? Html::encode($fb['comment']) : '<i>No comment provided</i>' ?>
+                                                 </p>
+                                                 <small class="text-muted">
+                                                     <?= Yii::$app->formatter->asDatetime($fb['timestamp'], 'short') ?> 
+                                                     <?php if(isset($fb['userId']) && $fb['userId'] != 'unknown'): ?>
+                                                         &bull; User ID: <?= Html::encode($fb['userId']) ?>
+                                                     <?php endif; ?>
+                                                 </small>
+                                             </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
