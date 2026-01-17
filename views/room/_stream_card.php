@@ -183,6 +183,25 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         </div>
     </div>
 
+    <!-- Aggregated Reactions -->
+    <?php $reactions = $stream->getAggregatedReactions(); ?>
+    <?php if (!empty($reactions)): ?>
+        <div class="reactions-bar" style="padding: 0 15px 10px; display: flex; gap: 5px; flex-wrap: wrap;">
+            <?php 
+            $count = 0;
+            foreach ($reactions as $emoji => $rCount): 
+                if ($count >= 5) break; 
+            ?>
+                <span class="badge" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 11px; padding: 2px 6px;">
+                    <?= $emoji ?> <?= $rCount ?>
+                </span>
+            <?php 
+                $count++;
+            endforeach; 
+            ?>
+        </div>
+    <?php endif; ?>
+
     <!-- FOOTER: Action Button -->
     <div class="col-footer">
         <?php if ($isLive): ?>

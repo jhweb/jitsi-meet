@@ -439,6 +439,49 @@ class JitsiLiveStream extends ActiveRecord
     }
 
     /**
+     * Get aggregated reaction counts
+     * @return array ['👍' => 5, '❤️' => 2] sorted by count desc
+     */
+    public function getAggregatedReactions()
+    {
+        $reactions = $this->getReactions();
+        if (empty($reactions)) {
+            return [];
+        }
+
+        $aggregated = [];
+        
+        // Handle different potential structures
+        foreach ($reactions as $r) {
+            // Structure 1: Simple list of emoji strings (unlikely but possible)
+            if (is_string($r)) {
+                $emoji = $r;
+            } 
+            // Structure 2: Object with 'reaction' property (standard Jitsi/8x8)
+            elseif (is_array($r) && !empty($r['reaction'])) {
+                $emoji = $r['reaction'];
+            }
+            // Structure 3: Key-Value map of user->reaction (also common)
+            elseif (is_array($r) && !empty($r['content'])) {
+                 $emoji = $r['content']; // Some versions use content
+            }
+            else {
+                continue;
+            }
+
+            if (!isset($aggregated[$emoji])) {
+                $aggregated[$emoji] = 0;
+            }
+            $aggregated[$emoji]++;
+        }
+
+        // Sort by count descending
+        arsort($aggregated);
+        
+        return $aggregated;
+    }
+
+    /**
      * Get recent participants for avatar display
      * @param int $limit
      * @return array List of ['user' => User|null, 'name' => string, 'email' => string]

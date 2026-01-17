@@ -229,6 +229,21 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 <div role="tabpanel" class="tab-pane" id="tab-session">
                     <div class="row">
                         <div class="col-md-6">
+                            
+                            <!-- RELOCATED REACTIONS -->
+                            <?php $reactions = $stream->getAggregatedReactions(); ?>
+                            <?php if (!empty($reactions)): ?>
+                                <h4><i class="fa fa-smile-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Reactions') ?></h4>
+                                <div class="reactions-container" style="margin-bottom: 20px;">
+                                    <?php foreach ($reactions as $emoji => $count): ?>
+                                        <span class="badge" style="background: var(--jitsi-card-bg); color: var(--jitsi-text-primary); border: 1px solid var(--jitsi-border-color); font-size: 14px; margin-right: 5px; padding: 5px 10px;">
+                                            <?= $emoji ?> <span style="margin-left: 5px; font-weight: bold; color: var(--primary);"><?= $count ?></span>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                                <hr>
+                            <?php endif; ?>
+
                             <h4><i class="fa fa-users"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Participation') ?></h4>
                             <table class="table">
                                 <tr>
