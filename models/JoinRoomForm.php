@@ -8,6 +8,9 @@ use Yii;
 class JoinRoomForm extends \yii\base\Model
 {
 
+    public $room;
+    public $newWindow;
+
    /**
      * @var boolean
      */
