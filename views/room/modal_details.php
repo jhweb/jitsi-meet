@@ -354,6 +354,12 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                         // Skip empty messages
                                         if (empty(trim($text))) continue;
 
+                                        // GIF/Image cleanup: Handle 8x8 specific "gif[url]" format
+                                        // This often comes as "gif[https://...]"
+                                        if (preg_match('/^gif\[(https?:\/\/\S+)\]$/i', trim($text), $matches)) {
+                                            $text = $matches[1];
+                                        }
+
                                         // Image Parsing (Convert URLs ending in image extensions to img tags)
                                         $text = preg_replace(
                                             '/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp|svg))(?:\?\S*)?/i', 
@@ -361,6 +367,35 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                             Html::encode($text)
                                         );
 
+                                        // Emoji Shortcode Mapping
+                                        $chatEmojiMap = [
+                                            ':smile:' => '😊',
+                                            ':smiley:' => '😃',
+                                            ':grinning:' => '😀',
+                                            ':beer:' => '🍺',
+                                            ':beers:' => '🍻',
+                                            ':angel:' => '😇',
+                                            ':love:' => '❤️',
+                                            ':heart:' => '❤️',
+                                            ':thumbsup:' => '👍',
+                                            ':thumbsdown:' => '👎',
+                                            ':clap:' => '👏',
+                                            ':fire:' => '🔥',
+                                            ':joy:' => '😂',
+                                            ':laugh:' => '😆',
+                                            ':sad:' => '😢',
+                                            ':cry:' => '😭',
+                                            ':angry:' => '😠',
+                                            ':surprised:' => '😮',
+                                            ':wink:' => '😉',
+                                            ':tongue:' => 'muk',
+                                            ':cool:' => '😎',
+                                            ':party:' => '🎉',
+                                            // Add more common Jitsi/Generic ones
+                                        ];
+                                        
+                                        $text = strtr($text, $chatEmojiMap);
+                                        
                                         // Determine Avatar
                                         $avatarUrl = $msg['avatar'] ?? null;
                                     ?>
