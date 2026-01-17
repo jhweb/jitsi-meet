@@ -449,30 +449,47 @@ class JitsiLiveStream extends ActiveRecord
             return [];
         }
 
+        // Mapping textual keys to Emojis
+        $emojiMap = [
+            'like' => '👍',
+            'clap' => '👏',
+            'love' => '❤️',
+            'surprised' => '😮',
+            'laugh' => '😂',
+            'fire' => '🔥',
+            'boo' => '👎',
+            'silence' => '😶',
+            'raised_hand' => '✋',
+        ];
+
         $aggregated = [];
         
         // Handle different potential structures
         foreach ($reactions as $r) {
-            // Structure 1: Simple list of emoji strings (unlikely but possible)
+            $emojiRaw = null;
+
+            // Structure 1: Simple list of emoji strings
             if (is_string($r)) {
-                $emoji = $r;
+                $emojiRaw = $r;
             } 
-            // Structure 2: Object with 'reaction' property (standard Jitsi/8x8)
+            // Structure 2: Object with 'reaction' property
             elseif (is_array($r) && !empty($r['reaction'])) {
-                $emoji = $r['reaction'];
+                $emojiRaw = $r['reaction'];
             }
-            // Structure 3: Key-Value map of user->reaction (also common)
+            // Structure 3: Key-Value map of user->reaction
             elseif (is_array($r) && !empty($r['content'])) {
-                 $emoji = $r['content']; // Some versions use content
-            }
-            else {
-                continue;
+                 $emojiRaw = $r['content']; 
             }
 
-            if (!isset($aggregated[$emoji])) {
-                $aggregated[$emoji] = 0;
+            if ($emojiRaw) {
+                $lower = strtolower($emojiRaw);
+                $emoji = $emojiMap[$lower] ?? $emojiRaw; // Use map or fallback to raw (if it IS an emoji)
+
+                if (!isset($aggregated[$emoji])) {
+                    $aggregated[$emoji] = 0;
+                }
+                $aggregated[$emoji]++;
             }
-            $aggregated[$emoji]++;
         }
 
         // Sort by count descending

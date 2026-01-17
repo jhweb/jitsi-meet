@@ -502,17 +502,23 @@ class RoomController extends Controller
                 
                 $data = json_decode($content, true);
                 if (is_array($data)) {
-                    // Handle potential wrapping (e.g. { "messages": [...] } or { "room": ..., "messages": [...] })
-                    if (isset($data['messages']) && is_array($data['messages'])) {
-                        $chatMessages = $data['messages'];
-                    } elseif (isset($data[0])) {
-                        $chatMessages = $data;
-                    } else {
-                        // Attempt to find any array property that might contain messages
-                        foreach ($data as $key => $val) {
-                            if (is_array($val) && isset($val[0]) && (isset($val[0]['timestamp']) || isset($val[0]['message']) || isset($val[0]['text']))) {
-                                $chatMessages = $val;
-                                break;
+                    // Try to find the messages array
+                    $candidates = [$data]; // start with root
+                    if (isset($data['messages'])) $candidates[] = $data['messages'];
+                    if (isset($data['data'])) $candidates[] = $data['data'];
+                    if (isset($data['payload'])) $candidates[] = $data['payload'];
+                    
+                    foreach ($candidates as $cand) {
+                        if (is_array($cand) && count($cand) > 0) {
+                            // Heuristic to check if this is a list of messages
+                            // Check first element
+                            $first = reset($cand);
+                            if (is_array($first)) {
+                                // Check for common message keys
+                                if (isset($first['message']) || isset($first['text']) || isset($first['body']) || isset($first['content']) || isset($first['msg']) || isset($first['sender']) || isset($first['timestamp'])) {
+                                    $chatMessages = $cand;
+                                    break;
+                                }
                             }
                         }
                     }

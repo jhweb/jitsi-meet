@@ -343,7 +343,12 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                                ?? $msg['endpointName'] 
                                                ?? Yii::t('JitsiMeetCloud8x8Module.base', 'Unknown Participant');
                                                
-                                        $text = $msg['message'] ?? $msg['text'] ?? '';
+                                        $text = $msg['message'] 
+                                             ?? $msg['text'] 
+                                             ?? $msg['body'] 
+                                             ?? $msg['content'] 
+                                             ?? $msg['msg'] 
+                                             ?? '';
                                         $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime(date('Y-m-d H:i:s', $msg['timestamp'] / 1000), 'short') : '';
                                         
                                         // Skip empty messages
