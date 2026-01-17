@@ -98,6 +98,14 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                     </li>
                     <?php endif; ?>
 
+                    <?php if ($hasChat): ?>
+                    <li role="presentation">
+                        <a href="#tab-chat" aria-controls="tab-chat" role="tab" data-toggle="tab">
+                            <i class="fa fa-comments"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                     <?php if ($hasFeedback): ?>
                     <li role="presentation">
                         <a href="#tab-feedback" aria-controls="tab-feedback" role="tab" data-toggle="tab">
@@ -237,7 +245,7 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                             <?php $participants = $stream->getRecentParticipants(10); ?>
                             <?php if (!empty($participants)): ?>
                                 <div style="margin-top: 10px;">
-                                    <label><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Recent Participants') ?></label>
+                                    <label><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Members who Participated') ?></label>
                                     <div class="avatar-stack" style="margin-left: 2px;">
                                         <?php foreach ($participants as $p): ?>
                                             <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
@@ -254,35 +262,6 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                         </div>
                          <div class="col-md-12">
                             <hr>
-                            <?php if ($hasChat && !empty($chatLogContent)): ?>
-                                <?php 
-                                    $chatMessages = json_decode($chatLogContent, true);
-                                    if (is_array($chatMessages) && count($chatMessages) > 0):
-                                ?>
-                                <h4><i class="fa fa-comments"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat History') ?></h4>
-                                <div class="chat-history-container" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--jitsi-border-color); border-radius: 4px; padding: 10px; background: var(--jitsi-card-bg); margin-bottom: 20px;">
-                                    <ul class="media-list">
-                                        <?php foreach ($chatMessages as $msg): 
-                                            // Handle various 8x8 chat formats
-                                            $sender = $msg['name'] ?? $msg['displayName'] ?? 'Unknown';
-                                            $text = $msg['message'] ?? $msg['text'] ?? '';
-                                            $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime(date('Y-m-d H:i:s', $msg['timestamp'] / 1000), 'short') : '';
-                                        ?>
-                                        <li class="media" style="margin-top: 10px; border-bottom: 1px solid var(--jitsi-border-color); padding-bottom: 5px;">
-                                            <div class="media-body">
-                                                <h5 class="media-heading" style="font-size: 13px; font-weight: bold;">
-                                                    <?= Html::encode($sender) ?> 
-                                                    <small class="pull-right text-muted"><?= $time ?></small>
-                                                </h5>
-                                                <p style="font-size: 13px;"><?= Html::encode($text) ?></p>
-                                            </div>
-                                        </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                </div>
-                                <hr>
-                                <?php endif; ?>
-                            <?php endif; ?>
 
                             <?php if (!empty($polls)): ?>
                                 <h4><i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Poll Results') ?></h4>
@@ -329,6 +308,54 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                 <p class="text-muted text-center"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No polls created during this session.') ?></p>
                             <?php endif; ?>
                          </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- CHAT LOG TAB -->
+                <?php if ($hasChat): ?>
+                <div role="tabpanel" class="tab-pane" id="tab-chat">
+                     <div class="row">
+                        <div class="col-md-12">
+                            <?php 
+                                $chatMessages = !empty($chatLogContent) ? json_decode($chatLogContent, true) : [];
+                                if (is_array($chatMessages) && count($chatMessages) > 0):
+                            ?>
+                            <div class="chat-history-container" style="max-height: 500px; overflow-y: auto; border: 1px solid var(--jitsi-border-color); border-radius: 4px; padding: 15px; background: var(--jitsi-card-bg);">
+                                <ul class="media-list">
+                                    <?php foreach ($chatMessages as $msg): 
+                                        // Handle various 8x8 chat formats including better Unknown fallback
+                                        // Priority: nick > displayName > name > endpointName
+                                        $sender = $msg['nick'] 
+                                               ?? $msg['displayName'] 
+                                               ?? $msg['name'] 
+                                               ?? $msg['endpointName'] 
+                                               ?? Yii::t('JitsiMeetCloud8x8Module.base', 'Unknown Participant');
+                                               
+                                        $text = $msg['message'] ?? $msg['text'] ?? '';
+                                        $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime(date('Y-m-d H:i:s', $msg['timestamp'] / 1000), 'short') : '';
+                                        
+                                        // Skip empty messages
+                                        if (empty(trim($text))) continue;
+                                    ?>
+                                    <li class="media" style="margin-top: 10px; border-bottom: 1px solid var(--jitsi-border-color); padding-bottom: 10px;">
+                                        <div class="media-body">
+                                            <h5 class="media-heading" style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                                                <?= Html::encode($sender) ?> 
+                                                <small class="pull-right text-muted" style="font-size: 11px;"><?= $time ?></small>
+                                            </h5>
+                                            <p style="font-size: 13px; line-height: 1.4; color: var(--jitsi-text-primary);"><?= nl2br(Html::encode($text)) ?></p>
+                                        </div>
+                                    </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <?php else: ?>
+                                <div class="alert alert-warning">
+                                    <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat log file exists but contains no readable messages.') ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
