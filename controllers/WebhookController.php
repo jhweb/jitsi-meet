@@ -279,6 +279,12 @@ class WebhookController extends Controller
             if ($cachedTitle) {
                 $stream->title = $cachedTitle;
             }
+
+            // Set Lobby from Cache if new record
+            $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($roomName);
+            if ($cache->get($lobbyKey)) {
+                $stream->lobby_enabled = 1;
+            }
         }
         
         // Fallback for title
@@ -863,7 +869,20 @@ class WebhookController extends Controller
         // We use the general find method but without session ID since provisioning happens before session start
         $stream = $this->findStream($roomName, null);
 
+        // Check if Lobby is enabled via DB Stream or Cache (for immediate streams)
+        $lobbyEnabled = false;
+
         if ($stream && $stream->lobby_enabled) {
+            $lobbyEnabled = true;
+        } else {
+            // Check Cache for immediate streams
+            $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($roomName);
+            if (Yii::$app->cache->get($lobbyKey)) {
+                $lobbyEnabled = true;
+            }
+        }
+
+        if ($lobbyEnabled) {
              Yii::info("Jitsi Webhook Provisioning: Enabling Lobby for $roomName", 'jitsi-meet-cloud-8x8');
              // Return 8x8 provisioning JSON
              return [

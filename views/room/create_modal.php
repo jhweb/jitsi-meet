@@ -16,6 +16,8 @@ use humhub\libs\Html;
             <?= $form->field($model, 'room')->textInput(['placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Stream Name')])->label(false) ?>
             
             <?= $form->field($model, 'newWindow')->checkbox() ?>
+
+            <?= $form->field($model, 'lobbyEnabled')->checkbox()->hint(Yii::t('JitsiMeetCloud8x8Module.base', 'Guests must be approved by a moderator.')) ?>
             
             <div style="margin-top: 15px;">
                 <?= ModalButton::submitModal(null, Yii::t('JitsiMeetCloud8x8Module.base', 'Start Stream'))

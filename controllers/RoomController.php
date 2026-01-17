@@ -55,6 +55,12 @@ class RoomController extends Controller
             $cacheKey = 'jitsiMeetCloud8x8:roomTitle:' . strtolower($fixedName);
             Yii::$app->cache->set($cacheKey, $rawTitle, 3600);
 
+            // Cache Lobby Enabled Setting
+            if ($model->lobbyEnabled) {
+                $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($fixedName);
+                Yii::$app->cache->set($lobbyKey, true, 3600);
+            }
+
             return $this->redirect(['open', 'name' => $fixedName]);
         }
 

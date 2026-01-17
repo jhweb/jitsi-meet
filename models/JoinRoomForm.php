@@ -8,14 +8,16 @@ use Yii;
 class JoinRoomForm extends \yii\base\Model
 {
 
-    public $room;
-    public $newWindow;
+   /**
+     * @var boolean
+     */
+    public $lobbyEnabled = false;
 
     public function rules()
     {
         return [
             [['room'], 'string'],
-            [['newWindow'], 'boolean'],
+            [['newWindow', 'lobbyEnabled'], 'boolean'],
         ];
     }
 
@@ -24,6 +26,7 @@ class JoinRoomForm extends \yii\base\Model
         return [
             'room' => Yii::t('JitsiMeetCloud8x8Module.base', 'Name'),
             'newWindow' => Yii::t('JitsiMeetCloud8x8Module.base', 'Open in new window?'),
+            'lobbyEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Waiting Room (Lobby)'),
         ];
     }
 
