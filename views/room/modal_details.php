@@ -332,15 +332,11 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 <div role="tabpanel" class="tab-pane" id="tab-chat">
                      <div class="row">
                         <div class="col-md-12">
-                            <?php 
-                                $chatMessages = !empty($chatLogContent) ? json_decode($chatLogContent, true) : [];
-                                if (is_array($chatMessages) && count($chatMessages) > 0):
-                            ?>
+                            <?php if (!empty($chatMessages) && count($chatMessages) > 0): ?>
                             <div class="chat-history-container" style="max-height: 500px; overflow-y: auto; border: 1px solid var(--jitsi-border-color); border-radius: 4px; padding: 15px; background: var(--jitsi-card-bg);">
                                 <ul class="media-list">
                                     <?php foreach ($chatMessages as $msg): 
-                                        // Handle various 8x8 chat formats including better Unknown fallback
-                                        // Priority: nick > displayName > name > endpointName
+                                        // Sender Name Parsing
                                         $sender = $msg['nick'] 
                                                ?? $msg['displayName'] 
                                                ?? $msg['name'] 
@@ -352,14 +348,33 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                         
                                         // Skip empty messages
                                         if (empty(trim($text))) continue;
+
+                                        // Image Parsing (Convert URLs ending in image extensions to img tags)
+                                        $text = preg_replace(
+                                            '/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp|svg))(?:\?\S*)?/i', 
+                                            '<br><a href="$1" target="_blank"><img src="$1" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; border: 1px solid #444;" /></a><br>', 
+                                            Html::encode($text)
+                                        );
+
+                                        // Determine Avatar
+                                        $avatarUrl = $msg['avatar'] ?? null;
                                     ?>
                                     <li class="media" style="margin-top: 10px; border-bottom: 1px solid var(--jitsi-border-color); padding-bottom: 10px;">
+                                        <div class="media-left">
+                                            <?php if ($avatarUrl): ?>
+                                                <img class="media-object img-circle" src="<?= Html::encode($avatarUrl) ?>" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                            <?php else: ?>
+                                                <img class="media-object img-circle" src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="media-body">
-                                            <h5 class="media-heading" style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                                            <h5 class="media-heading" style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">
                                                 <?= Html::encode($sender) ?> 
                                                 <small class="pull-right text-muted" style="font-size: 11px;"><?= $time ?></small>
                                             </h5>
-                                            <p style="font-size: 13px; line-height: 1.4; color: var(--jitsi-text-primary);"><?= nl2br(Html::encode($text)) ?></p>
+                                            <div style="font-size: 13px; line-height: 1.4; color: var(--jitsi-text-primary);">
+                                                <?= nl2br($text) // Note: $text is already encoded above, except for the image tags we injected ?>
+                                            </div>
                                         </div>
                                     </li>
                                     <?php endforeach; ?>

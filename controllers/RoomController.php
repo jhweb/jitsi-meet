@@ -485,11 +485,12 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException();
         }
 
-        $chatLogContent = null;
+        $chatMessages = [];
         if (!empty($stream->chat_log_url)) {
             // Fetch chat log with a 5-second timeout
             $context = stream_context_create(['http' => ['timeout' => 5]]); 
             $content = @file_get_contents($stream->chat_log_url, false, $context);
+            
             if ($content !== false) {
                 // Check for GZIP magic bytes (1f 8b)
                 if (strlen($content) >= 2 && ord($content[0]) == 0x1f && ord($content[1]) == 0x8b) {
@@ -498,7 +499,24 @@ class RoomController extends Controller
                         $content = $decoded;
                     }
                 }
-                $chatLogContent = $content;
+                
+                $data = json_decode($content, true);
+                if (is_array($data)) {
+                    // Handle potential wrapping (e.g. { "messages": [...] } or { "room": ..., "messages": [...] })
+                    if (isset($data['messages']) && is_array($data['messages'])) {
+                        $chatMessages = $data['messages'];
+                    } elseif (isset($data[0])) {
+                        $chatMessages = $data;
+                    } else {
+                        // Attempt to find any array property that might contain messages
+                        foreach ($data as $key => $val) {
+                            if (is_array($val) && isset($val[0]) && (isset($val[0]['timestamp']) || isset($val[0]['message']) || isset($val[0]['text']))) {
+                                $chatMessages = $val;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -513,7 +531,7 @@ class RoomController extends Controller
 
         return $this->renderAjax('modal_details', [
             'stream' => $stream,
-            'chatLogContent' => $chatLogContent,
+            'chatMessages' => $chatMessages,
             'screenSharingContent' => $screenSharingContent
         ]);
     }
