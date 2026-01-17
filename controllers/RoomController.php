@@ -487,10 +487,17 @@ class RoomController extends Controller
 
         $chatLogContent = null;
         if (!empty($stream->chat_log_url)) {
-            // Fetch chat log with a 3-second timeout to check availability/content
-            $context = stream_context_create(['http' => ['timeout' => 3]]); 
+            // Fetch chat log with a 5-second timeout
+            $context = stream_context_create(['http' => ['timeout' => 5]]); 
             $content = @file_get_contents($stream->chat_log_url, false, $context);
             if ($content !== false) {
+                // Check for GZIP magic bytes (1f 8b)
+                if (strlen($content) >= 2 && ord($content[0]) == 0x1f && ord($content[1]) == 0x8b) {
+                    $decoded = @gzdecode($content);
+                    if ($decoded !== false) {
+                        $content = $decoded;
+                    }
+                }
                 $chatLogContent = $content;
             }
         }
