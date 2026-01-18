@@ -76,15 +76,30 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
 
             <div class="tab-menu">
                 <ul class="nav nav-tabs" role="tablist">
+                    <?php 
+                        // Determine default active tab
+                        $activeTab = 'downloads'; // Default fallback
+                        if (($hasRecording || $hasHighlights) && !$isExpired) {
+                            $activeTab = 'watch';
+                        } elseif ($hasSessionData && !$hasRecording && !$hasHighlights) {
+                           // If no recordings but session data, maybe prefer session? 
+                           // But user asked for Downloads first if blank.
+                           // Let's stick to Downloads as secondary default.
+                        }
+                        
+                        // Override: if Downloads is default but no content for it (unlikely as it has generic files), 
+                        // actually Downloads is always safe fallback.
+                    ?>
+
                     <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
-                    <li role="presentation" class="active">
+                    <li role="presentation" class="<?= ($activeTab == 'watch') ? 'active' : '' ?>">
                         <a href="#tab-watch" aria-controls="tab-watch" role="tab" data-toggle="tab">
                             <i class="fa fa-play-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Watch Replay') ?>
                         </a>
                     </li>
                     <?php endif; ?>
                     
-                    <li role="presentation" class="<?= (!$isExpired && !$hasRecording && !$hasHighlights) ? 'active' : '' ?>">
+                    <li role="presentation" class="<?= ($activeTab == 'downloads') ? 'active' : '' ?>">
                         <a href="#tab-downloads" aria-controls="tab-downloads" role="tab" data-toggle="tab">
                             <i class="fa fa-download"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Downloads') ?>
                         </a>
@@ -120,7 +135,7 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 
                 <!-- WATCH TAB -->
                 <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
-                <div role="tabpanel" class="tab-pane active" id="tab-watch">
+                <div role="tabpanel" class="tab-pane <?= ($activeTab == 'watch') ? 'active' : '' ?>" id="tab-watch">
                     
                     <?php if ($hasHighlights): ?>
                         <div class="video-container" style="margin-bottom: 30px;">
@@ -159,7 +174,7 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 <?php endif; ?>
 
                 <!-- DOWNLOADS TAB -->
-                <div role="tabpanel" class="tab-pane <?= (!$isExpired && !$hasRecording && !$hasHighlights) ? 'active' : '' ?>" id="tab-downloads">
+                <div role="tabpanel" class="tab-pane <?= ($activeTab == 'downloads') ? 'active' : '' ?>" id="tab-downloads">
                     <?php if ($isExpired): ?>
                         <div class="alert alert-warning" style="margin-bottom: 20px;">
                             <i class="fa fa-exclamation-triangle"></i> 

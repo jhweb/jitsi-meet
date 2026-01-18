@@ -559,15 +559,12 @@ class RoomController extends Controller
                     
                     foreach ($candidates as $cand) {
                         if (is_array($cand) && count($cand) > 0) {
-                            // Heuristic to check if this is a list of messages
-                            // Check first element
+                            // Relaxed Heuristic: accept array if it looks list-like (indexed keys) or first element is array
+                            // Just check if it's a list of arrays
                             $first = reset($cand);
                             if (is_array($first)) {
-                                // Check for common message keys
-                                if (isset($first['message']) || isset($first['text']) || isset($first['body']) || isset($first['content']) || isset($first['msg']) || isset($first['sender']) || isset($first['timestamp'])) {
-                                    $chatMessages = $cand;
-                                    break;
-                                }
+                                $chatMessages = $cand;
+                                break;
                             }
                         }
                     }
