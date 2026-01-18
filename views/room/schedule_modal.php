@@ -5,6 +5,8 @@ use humhub\widgets\Button;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
 use humhub\widgets\ModalDialog;
+use humhub\modules\content\widgets\richtext\RichTextField;
+use humhub\modules\topic\widgets\TopicPicker;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream */
 
@@ -90,10 +92,25 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
         'maxlength' => 255
     ])->label(Yii::t('JitsiMeetCloud8x8Module.base', 'Stream Title')) ?>
 
-    <?= $form->field($model, 'description')->textarea([
-        'rows' => 3,
-        'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Optional description for the event')
+    <?= $form->field($model, 'description')->widget(RichTextField::class, [
+        'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Optional description for the event'),
+        'layout' => \humhub\modules\content\widgets\richtext\RichTextFieldLayout::class,
     ]) ?>
+
+    <?php if (!empty($types)): ?>
+    <div class="form-group">
+        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Event Type') ?></label>
+        <?= Html::dropDownList('type_id', null, $types, ['class' => 'form-control', 'prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Select event type...')]) ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="form-group">
+        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Topics') ?></label>
+        <?= TopicPicker::widget([
+            'name' => 'topics',
+            'options' => ['placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Select topic...')],
+        ]) ?>
+    </div>
 
     <div class="row">
         <div class="col-md-6">

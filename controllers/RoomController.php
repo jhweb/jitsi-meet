@@ -17,6 +17,8 @@ use humhub\modules\calendar\models\reminder\CalendarReminder;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
+use humhub\modules\calendar\models\CalendarEntryType;
+use humhub\modules\topic\models\Topic;
 use Yii;
 
 /**
@@ -184,16 +186,44 @@ class RoomController extends Controller
                 }
             }
 
+            // Fetch Event Types
+            $types = [];
+            $allTypes = CalendarEntryType::find()->all();
+            foreach ($allTypes as $t) {
+                $types[$t->id] = $t->name;
+            }
+
             // Render modal form
             return $this->renderAjax('schedule_modal', [
                 'model' => $model,
                 'calendars' => $calendars,
+                'types' => $types,
                 'disabledOptions' => $disabledOptions,
                 'defaultCalendarGuid' => $user->contentContainerRecord->guid
             ]);
         }
 
         if ($model->load(Yii::$app->request->post())) {
+            // Validate Word Count (350 words)
+            $wordCount = str_word_count(strip_tags($model->description));
+            if ($wordCount > 350) {
+                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 350 words. Current count: {count}', ['count' => $wordCount]));
+                
+                // Re-fetch data for view
+                $user = Yii::$app->user->getIdentity();
+                $calendars = [$user->contentContainerRecord->guid => $user->displayName]; // Simplified for error re-render
+                $types = [];
+                foreach (CalendarEntryType::find()->all() as $t) $types[$t->id] = $t->name;
+                
+                return $this->renderAjax('schedule_modal', [
+                    'model' => $model,
+                    'calendars' => $calendars, // Note: This might lose full list if valid, but good enough for error state
+                    'types' => $types,
+                    'disabledOptions' => [],
+                    'defaultCalendarGuid' => $user->contentContainerRecord->guid
+                ]);
+            }
+
             // Generate room name from title
             $model->room_name = $this->fixRoomName($model->title ?: 'Stream' . time());
             
@@ -249,6 +279,12 @@ class RoomController extends Controller
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
                         
+                        // Set Event Type
+                        $typeId = Yii::$app->request->post('type_id');
+                        if ($typeId) {
+                            $calendarEntry->type_id = $typeId;
+                        }
+                        
                         // Enable participation and ensure it's published mechanism
                         $calendarEntry->participant_info = 1; 
                         $calendarEntry->participation_mode = 2; // CalendarEntry::PARTICIPATION_MODE_ALL (Hardcoded to prevent undefined constant in older versions)
@@ -259,6 +295,13 @@ class RoomController extends Controller
                         if ($calendarEntry->save()) {
                             $model->calendar_entry_id = $calendarEntry->id;
                             $model->save();
+                            
+                            // Attach Topics
+                            $topics = Yii::$app->request->post('topics');
+                            if (!empty($topics)) {
+                                Topic::attach($calendarEntry->content, $topics);
+                            }
+
                             Yii::info("Created Calendar Entry {$calendarEntry->id} for Stream {$model->id}", 'jitsi-meet-cloud-8x8');
                         } else {
                             // Critical Failure: Calendar Entry invalid

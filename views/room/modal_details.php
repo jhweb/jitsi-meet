@@ -121,9 +121,26 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                 <!-- WATCH TAB -->
                 <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
                 <div role="tabpanel" class="tab-pane active" id="tab-watch">
+                    
+                    <?php if ($hasHighlights): ?>
+                        <div class="video-container" style="margin-bottom: 30px;">
+                            <h5><i class="fa fa-film"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights') ?></h5>
+                            <video width="100%" controls style="background: #000; border-radius: 8px;" preload="metadata">
+                                <source src="<?= Html::encode($stream->highlights_url) ?>" type="video/mp4">
+                                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
+                            </video>
+                            <div class="text-right" style="margin-top: 5px;">
+                                <a href="<?= Html::encode($stream->highlights_url) ?>" target="_blank" class="btn btn-default btn-sm">
+                                    <i class="fa fa-external-link"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open in new tab') ?>
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if ($hasRecording): ?>
                         <div class="video-container" style="margin-bottom: 20px;">
-                             <video width="100%" controls <?php if($thumb = $stream->getThumbnailUrl()): ?>poster="<?= Html::encode($thumb) ?>"<?php endif; ?> style="background: #000; border-radius: 8px; preload="metadata"">
+                            <?php if ($hasHighlights): ?><h5><i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Session') ?></h5><?php endif; ?>
+                             <video width="100%" controls <?php if($thumb = $stream->getThumbnailUrl()): ?>poster="<?= Html::encode($thumb) ?>"<?php endif; ?> style="background: #000; border-radius: 8px;" preload="metadata">
                                 <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
                                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
                             </video> 
@@ -136,9 +153,7 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                     <?php endif; ?>
 
                     <?php if ($hasHighlights && !$hasRecording): ?>
-                        <div class="alert alert-info">
-                            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full recording not available. Highlights are available in the Downloads tab.') ?>
-                        </div>
+                        <!-- Case handled above by showing highlights player -->
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
@@ -404,7 +419,18 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                             <?php if ($avatarUrl): ?>
                                                 <img class="media-object img-circle" src="<?= Html::encode($avatarUrl) ?>" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
                                             <?php else: ?>
-                                                <img class="media-object img-circle" src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                                <?php 
+                                                    // Antigravity Fix: Try to resolve HumHub user
+                                                    $hhUser = \humhub\modules\user\models\User::find()->where(['display_name' => $sender])->one(); // Try Name
+                                                    if (!$hhUser) {
+                                                        // Fallback logic could go here if we had email in chat log, but usually we don't for general messages
+                                                    }
+                                                ?>
+                                                <?php if ($hhUser): ?>
+                                                    <?= Image::widget(['user' => $hhUser, 'width' => 32, 'link' => true]) ?>
+                                                <?php else: ?>
+                                                    <img class="media-object img-circle" src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </div>
                                         <div class="media-body">
@@ -455,7 +481,11 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                                  <small class="text-muted">
                                                      <?= Yii::$app->formatter->asDatetime($fb['timestamp'], 'short') ?> 
                                                      <?php if(isset($fb['userId']) && $fb['userId'] != 'unknown'): ?>
-                                                         &bull; User ID: <?= Html::encode($fb['userId']) ?>
+                                                         <?php 
+                                                            $fbUser = \humhub\modules\user\models\User::findOne($fb['userId']);
+                                                            $fbName = $fbUser ? $fbUser->displayName : 'User ID: ' . $fb['userId'];
+                                                         ?>
+                                                         &bull; <?= Html::encode($fbName) ?>
                                                      <?php endif; ?>
                                                  </small>
                                              </div>
