@@ -420,10 +420,14 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                                 <img class="media-object img-circle" src="<?= Html::encode($avatarUrl) ?>" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
                                             <?php else: ?>
                                                 <?php 
-                                                    // Antigravity Fix: Try to resolve HumHub user
-                                                    $hhUser = \humhub\modules\user\models\User::find()->where(['display_name' => $sender])->one(); // Try Name
-                                                    if (!$hhUser) {
-                                                        // Fallback logic could go here if we had email in chat log, but usually we don't for general messages
+                                                    // Antigravity Fix: Try to resolve HumHub user safely
+                                                    $hhUser = null;
+                                                    if (!empty($email)) {
+                                                        $hhUser = \humhub\modules\user\models\User::findOne(['email' => $email]);
+                                                    }
+                                                    if (!$hhUser && !empty($sender)) {
+                                                        // Try by username (display_name is not a column)
+                                                        $hhUser = \humhub\modules\user\models\User::findOne(['username' => $sender]);
                                                     }
                                                 ?>
                                                 <?php if ($hhUser): ?>
