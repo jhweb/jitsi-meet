@@ -97,12 +97,12 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
         'layout' => \humhub\modules\content\widgets\richtext\RichTextFieldLayout::class,
     ]) ?>
     <div id="desc-word-count" class="text-right text-muted" style="margin-top: -10px; margin-bottom: 10px; font-size: 12px;">
-        <span id="current-words">0</span> / 500 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'words') ?>
+        <span id="current-words">0</span> / 200 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'words') ?>
     </div>
 
     <script>
         $(function() {
-            var maxWords = 500;
+            var maxWords = 200;
             var $countSpan = $('#current-words');
             var $countDiv = $('#desc-word-count');
             var pollingInterval;

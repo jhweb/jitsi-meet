@@ -40,7 +40,7 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
                 
                 <?php if (!empty($calendarEntry->description)): ?>
                 <div class="event-description" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                    <?= Html::encode($calendarEntry->description) ?>
+                    <?= \humhub\modules\content\widgets\richtext\RichText::output($calendarEntry->description) ?>
                 </div>
                 <?php endif; ?>
 

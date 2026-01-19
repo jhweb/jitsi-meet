@@ -215,8 +215,8 @@ class RoomController extends Controller
             
             Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", PHP Word Count: " . $count, 'jitsi-meet-cloud-8x8');
             
-            if ($count > 500) {
-                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 500 words. Current count: {count}', ['count' => $count]));
+            if ($count > 200) {
+                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 200 words. Current count: {count}', ['count' => $count]));
                 
                 // Re-fetch data for view
                 $user = Yii::$app->user->getIdentity();
