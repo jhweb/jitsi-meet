@@ -205,8 +205,11 @@ class RoomController extends Controller
 
         if ($model->load(Yii::$app->request->post())) {
             // Validate Word Count (500 words)
-            // Use more robust counting: decode entities, strip tags
-            $cleanDesc = strip_tags(html_entity_decode($model->description));
+            // Validate Word Count (500 words)
+            // Fix: Replace block tags with spaces to prevent word concatenation (e.g. </p><p> -> wordword)
+            $rawDesc = $model->description;
+            $spacedDesc = str_replace(['<', '>'], [' <', '> '], $rawDesc); // Bruteforce spacing around tags
+            $cleanDesc = strip_tags(html_entity_decode($spacedDesc));
             $wordCount = str_word_count($cleanDesc);
             
             Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", Word Count: " . $wordCount, 'jitsi-meet-cloud-8x8');

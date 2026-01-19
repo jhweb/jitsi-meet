@@ -109,12 +109,8 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
 
             function countWords(str) {
                 if (!str) return 0;
-                // Remove HTML tags for counting
-                var text = str.replace(/<[^>]*>/g, ' ');
-                // Replace encoded entities
-                text = text.replace(/&nbsp;|&#160;/gi, ' ');
                 // Clean whitespace and count
-                text = text.trim();
+                var text = str.trim();
                 return text.length === 0 ? 0 : text.split(/\s+/).length;
             }
 
@@ -128,8 +124,10 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
                 }
 
                 if ($editor.length) {
-                    // Get text content directly
-                    var text = $editor.text();
+                    // Use innerText to preserve line breaks/block elements as newlines
+                    // jQuery .text() squashes block elements together "word</p><p>word" -> "wordword"
+                    var text = $editor[0].innerText || $editor.text();
+                    
                     var count = countWords(text);
                     $countSpan.text(count);
 
