@@ -118,7 +118,6 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         </div>
         <?php if (!empty($stream->description)): ?>
             <div class="stream-description text-muted" style="font-size: 12px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-height: 4.5em; line-height: 1.5em;">
-            <div class="stream-description text-muted" style="font-size: 12px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-height: 4.5em; line-height: 1.5em;">
                 <?= \humhub\modules\content\widgets\richtext\RichText::output($stream->description, ['exclude' => ['oembed']]) ?>
             </div>
         <?php endif; ?>
