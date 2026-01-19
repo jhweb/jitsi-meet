@@ -206,16 +206,17 @@ class RoomController extends Controller
         if ($model->load(Yii::$app->request->post())) {
             // Validate Word Count (500 words)
             // Validate Word Count (500 words)
-            // Fix: Replace block tags with spaces to prevent word concatenation (e.g. </p><p> -> wordword)
+            // Use stricter whitespace splitting for count
             $rawDesc = $model->description;
-            $spacedDesc = str_replace(['<', '>'], [' <', '> '], $rawDesc); // Bruteforce spacing around tags
-            $cleanDesc = strip_tags(html_entity_decode($spacedDesc));
-            $wordCount = str_word_count($cleanDesc);
+            // Decode entities to treat &nbsp; as space
+            $decodedDesc = html_entity_decode($rawDesc);
+            $cleanDesc = strip_tags($decodedDesc);
+            $count = count(preg_split('~[^\p{L}\p{N}\']+~u', $cleanDesc, -1, PREG_SPLIT_NO_EMPTY));
             
-            Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", Word Count: " . $wordCount, 'jitsi-meet-cloud-8x8');
+            Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", PHP Word Count: " . $count, 'jitsi-meet-cloud-8x8');
             
-            if ($wordCount > 500) {
-                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 500 words. Current count: {count}', ['count' => $wordCount]));
+            if ($count > 500) {
+                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 500 words. Current count: {count}', ['count' => $count]));
                 
                 // Re-fetch data for view
                 $user = Yii::$app->user->getIdentity();

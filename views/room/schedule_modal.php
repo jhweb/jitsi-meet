@@ -109,54 +109,73 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
 
             function countWords(str) {
                 if (!str) return 0;
+                // Remove HTML tags for counting validity
+                var text = str.replace(/<[^>]*>/g, ' ');
+                // Replace encoded entities
+                text = text.replace(/&nbsp;|&#160;/gi, ' ');
                 // Clean whitespace and count
-                var text = str.trim();
+                text = text.trim();
                 return text.length === 0 ? 0 : text.split(/\s+/).length;
             }
 
             function updateWordCount() {
-                // Selector for ProseMirror editor used by HumHub RichText
-                var $editor = $('.modal-dialog .ProseMirror');
+                // Try finding the rich text editor div
+                // HumHub 1.16+ usually uses .ProseMirror
+                var $modal = $('.jitsi-schedule-modal');
+                var $editor = $modal.find('.ProseMirror');
                 
-                // Fallback for standard contenteditable if ProseMirror class missing
+                // Fallback 1: specific contenteditable
                 if (!$editor.length) {
-                    $editor = $('.modal-dialog [contenteditable="true"]');
+                    $editor = $modal.find('[contenteditable="true"]');
+                }
+                
+                // Fallback 2: The hidden input value (if synced)
+                var text = '';
+                if ($editor.length) {
+                    text = $editor[0].innerText || $editor.text();
+                } else {
+                    // Try getting value from the original textarea matching the model attribute
+                    var $input = $modal.find('#jitsilivestream-description');
+                    if ($input.length) {
+                        text = $input.val();
+                    }
                 }
 
-                if ($editor.length) {
-                    // Use innerText to preserve line breaks/block elements as newlines
-                    // jQuery .text() squashes block elements together "word</p><p>word" -> "wordword"
-                    var text = $editor[0].innerText || $editor.text();
-                    
-                    var count = countWords(text);
-                    $countSpan.text(count);
+                var count = countWords(text);
+                $countSpan.text(count);
 
-                    var $btn = $('.modal-dialog .modal-footer .btn-primary'); // Target save button
-                    
-                    if (count > maxWords) {
-                        $countDiv.css('color', 'red').css('font-weight', 'bold');
-                        $btn.prop('disabled', true);
-                        $btn.attr('title', 'Description exceeds word limit');
-                    } else {
-                        $countDiv.css('color', '').css('font-weight', '');
-                        $btn.prop('disabled', false); // Only re-enable if we disabled it
-                        $btn.attr('title', '');
-                    }
+                var $btn = $modal.find('.modal-footer .btn-primary');
+                
+                if (count > maxWords) {
+                    $countDiv.css('color', 'red').css('font-weight', 'bold');
+                    // Disable save button
+                    $btn.prop('disabled', true);
+                    $btn.addClass('disabled');
+                    $btn.attr('title', 'Description exceeds word limit');
+                } else {
+                    $countDiv.css('color', '').css('font-weight', '');
+                    $btn.prop('disabled', false);
+                    $btn.removeClass('disabled');
+                    $btn.attr('title', '');
                 }
             }
             
-            // Monitor events
-            $('body').on('keyup input paste propertychange', '.modal-dialog .ProseMirror, .modal-dialog [contenteditable="true"]', function() {
+            // Monitor events on editor and any inputs in the modal
+            $('body').on('keyup input paste propertychange', '.jitsi-schedule-modal [contenteditable="true"], .jitsi-schedule-modal textarea, .jitsi-schedule-modal input', function() {
                 updateWordCount();
             });
             
             // Polling to ensure we catch pastes or async loads
+            if (pollingInterval) clearInterval(pollingInterval);
             pollingInterval = setInterval(updateWordCount, 1000);
             
             // Clean up interval when modal closes
             $('.modal').on('hidden.bs.modal', function () {
                 clearInterval(pollingInterval);
             });
+            
+            // Run immediately
+            updateWordCount();
         });
     </script>
 
