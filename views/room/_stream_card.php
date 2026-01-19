@@ -117,7 +117,7 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
             Room name: <?= Html::encode($stream->room_name) ?>
         </div>
         <?php if (!empty($stream->description)): ?>
-            <div class="stream-description text-muted" style="font-size: 12px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
+            <div class="stream-description text-muted" style="font-size: 12px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
                 <?= Html::encode($stream->description) ?>
             </div>
         <?php endif; ?>

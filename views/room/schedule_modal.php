@@ -67,7 +67,7 @@ $title = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Edit Stream') : Yii::
 $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Changes') : Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream');
 ?>
 
-<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . $title]); ?>
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . $title, 'class' => 'jitsi-schedule-modal']); ?>
 
 <?php $form = ActiveForm::begin([
     'id' => 'schedule-stream-form',
@@ -96,6 +96,50 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
         'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Optional description for the event'),
         'layout' => \humhub\modules\content\widgets\richtext\RichTextFieldLayout::class,
     ]) ?>
+    <div id="desc-word-count" class="text-right text-muted" style="margin-top: -10px; margin-bottom: 10px; font-size: 12px;">
+        <span id="current-words">0</span> / 500 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'words') ?>
+    </div>
+
+    <script>
+        $(function() {
+            var maxWords = 500;
+            var $countSpan = $('#current-words');
+            var $countDiv = $('#desc-word-count');
+            
+            function countWords(str) {
+                return str.trim().length === 0 ? 0 : str.trim().split(/\s+/).length;
+            }
+
+            function updateWordCount() {
+                var $editor = $('.jitsi-schedule-modal .ProseMirror');
+                if ($editor.length) {
+                    var text = $editor.text();
+                    var count = countWords(text);
+                    $countSpan.text(count);
+
+                    var $btn = $('.jitsi-schedule-modal .modal-footer .btn-primary');
+                    
+                    if (count > maxWords) {
+                        $countDiv.css('color', 'red').css('font-weight', 'bold');
+                        $btn.prop('disabled', true);
+                        $btn.attr('title', 'Description exceeds word limit');
+                    } else {
+                        $countDiv.css('color', '').css('font-weight', '');
+                        $btn.prop('disabled', false);
+                        $btn.attr('title', '');
+                    }
+                }
+            }
+            
+            // Monitor changes
+            $('body').on('keyup input paste', '.jitsi-schedule-modal .ProseMirror', function() {
+                updateWordCount();
+            });
+            
+            // Initial check (delay to let editor load)
+            setTimeout(updateWordCount, 500);
+        });
+    </script>
 
     <?php if (!empty($types)): ?>
     <div class="form-group">
