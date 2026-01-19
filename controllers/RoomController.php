@@ -205,7 +205,12 @@ class RoomController extends Controller
 
         if ($model->load(Yii::$app->request->post())) {
             // Validate Word Count (500 words)
-            $wordCount = str_word_count(strip_tags($model->description));
+            // Use more robust counting: decode entities, strip tags
+            $cleanDesc = strip_tags(html_entity_decode($model->description));
+            $wordCount = str_word_count($cleanDesc);
+            
+            Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", Word Count: " . $wordCount, 'jitsi-meet-cloud-8x8');
+            
             if ($wordCount > 500) {
                 $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 500 words. Current count: {count}', ['count' => $wordCount]));
                 

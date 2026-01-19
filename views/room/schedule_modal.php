@@ -105,19 +105,35 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
             var maxWords = 500;
             var $countSpan = $('#current-words');
             var $countDiv = $('#desc-word-count');
-            
+            var pollingInterval;
+
             function countWords(str) {
-                return str.trim().length === 0 ? 0 : str.trim().split(/\s+/).length;
+                if (!str) return 0;
+                // Remove HTML tags for counting
+                var text = str.replace(/<[^>]*>/g, ' ');
+                // Replace encoded entities
+                text = text.replace(/&nbsp;|&#160;/gi, ' ');
+                // Clean whitespace and count
+                text = text.trim();
+                return text.length === 0 ? 0 : text.split(/\s+/).length;
             }
 
             function updateWordCount() {
-                var $editor = $('.jitsi-schedule-modal .ProseMirror');
+                // Selector for ProseMirror editor used by HumHub RichText
+                var $editor = $('.modal-dialog .ProseMirror');
+                
+                // Fallback for standard contenteditable if ProseMirror class missing
+                if (!$editor.length) {
+                    $editor = $('.modal-dialog [contenteditable="true"]');
+                }
+
                 if ($editor.length) {
+                    // Get text content directly
                     var text = $editor.text();
                     var count = countWords(text);
                     $countSpan.text(count);
 
-                    var $btn = $('.jitsi-schedule-modal .modal-footer .btn-primary');
+                    var $btn = $('.modal-dialog .modal-footer .btn-primary'); // Target save button
                     
                     if (count > maxWords) {
                         $countDiv.css('color', 'red').css('font-weight', 'bold');
@@ -125,19 +141,24 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
                         $btn.attr('title', 'Description exceeds word limit');
                     } else {
                         $countDiv.css('color', '').css('font-weight', '');
-                        $btn.prop('disabled', false);
+                        $btn.prop('disabled', false); // Only re-enable if we disabled it
                         $btn.attr('title', '');
                     }
                 }
             }
             
-            // Monitor changes
-            $('body').on('keyup input paste', '.jitsi-schedule-modal .ProseMirror', function() {
+            // Monitor events
+            $('body').on('keyup input paste propertychange', '.modal-dialog .ProseMirror, .modal-dialog [contenteditable="true"]', function() {
                 updateWordCount();
             });
             
-            // Initial check (delay to let editor load)
-            setTimeout(updateWordCount, 500);
+            // Polling to ensure we catch pastes or async loads
+            pollingInterval = setInterval(updateWordCount, 1000);
+            
+            // Clean up interval when modal closes
+            $('.modal').on('hidden.bs.modal', function () {
+                clearInterval(pollingInterval);
+            });
         });
     </script>
 
