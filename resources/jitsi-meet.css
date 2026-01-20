@@ -70,9 +70,36 @@ body.dark-mode,
     border: 1px solid var(--jitsi-border);
 }
 
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+    .jitsi-filter-bar {
+        justify-content: center;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .jitsi-filters {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .jitsi-actions {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .jitsi-filter-btn {
+        flex: 1 1 auto;
+        /* Allow buttons to grow evenly on mobile */
+        justify-content: center;
+    }
+}
+
 .jitsi-filters {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
+    /* Allow wrapping on smaller desktop/tablet screens */
 }
 
 .jitsi-filter-btn {
@@ -88,6 +115,8 @@ body.dark-mode,
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
+    /* Prevent text wrapping inside button */
 }
 
 .jitsi-filter-btn:hover {
