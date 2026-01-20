@@ -5,3 +5,5 @@ nbproject
 .DS_Store
 jmeet-dec21-stylesfixes.zip
 .github/feature-prd.md
+/composer.lock
+/vendor
