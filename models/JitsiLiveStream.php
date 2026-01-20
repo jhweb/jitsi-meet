@@ -65,7 +65,7 @@ class JitsiLiveStream extends ActiveRecord
             [['room_name', 'session_id', 'stream_url', 'event_id', 'title', 'rrule', 'uid', 'timezone'], 'string', 'max' => 255],
             [['recurrence_id'], 'string', 'max' => 50],
             [['description', 'exdate'], 'string'],
-            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions', 'highlights_url', 'screen_sharing_url', 'speaker_stats', 'rtcstats_url', 'ytstream_url'], 'safe'],
+            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions', 'highlights_url', 'screen_sharing_url', 'speaker_stats', 'rtcstats_url', 'ytstream_url', 'polls', 'feedback'], 'safe'],
             [['event_id'], 'unique'],
         ];
     }
@@ -385,6 +385,19 @@ class JitsiLiveStream extends ActiveRecord
     }
 
     /**
+     * Get parsed polls
+     * @return array
+     */
+    public function getPolls()
+    {
+        if (empty($this->polls)) {
+            return [];
+        }
+        $polls = json_decode($this->polls, true);
+        return is_array($polls) ? $polls : [];
+    }
+
+    /**
      * Get parsed reactions
      * @return array
      */
@@ -395,5 +408,183 @@ class JitsiLiveStream extends ActiveRecord
         }
         $reactions = json_decode($this->reactions, true);
         return is_array($reactions) ? $reactions : [];
+    }
+
+    /**
+     * Get parsed feedback
+     * @return array
+     */
+    public function getFeedback()
+    {
+        if (empty($this->feedback)) {
+            return [];
+        }
+        $feedback = json_decode($this->feedback, true);
+        return is_array($feedback) ? $feedback : [];
+    }
+
+    /**
+     * Get thumbnail URL for the stream
+     * @return string|null
+     */
+    /**
+     * Get thumbnail URL for the stream
+     * @return string|null
+     */
+    public function getThumbnailUrl()
+    {
+        // Currently 8x8 does not provide a direct thumbnail URL in the webhook metadata.
+        // We return null so the video player uses its default behavior (first frame or black).
+        return null;
+    }
+
+    /**
+     * Get aggregated reaction counts
+     * @return array ['👍' => 5, '❤️' => 2] sorted by count desc
+     */
+    public function getAggregatedReactions()
+    {
+        $reactions = $this->getReactions();
+        if (empty($reactions)) {
+            return [];
+        }
+
+        // Mapping textual keys to Emojis
+        $emojiMap = [
+            'like' => '👍',
+            'clap' => '👏',
+            'love' => '❤️',
+            'surprised' => '😮',
+            'laugh' => '😂',
+            'fire' => '🔥',
+            'boo' => '👎',
+            'silence' => '😶',
+            'raised_hand' => '✋',
+        ];
+
+        $aggregated = [];
+        
+        // Handle different potential structures
+        foreach ($reactions as $r) {
+            $emojiRaw = null;
+
+            // Structure 1: Simple list of emoji strings
+            if (is_string($r)) {
+                $emojiRaw = $r;
+            } 
+            // Structure 2: Object with 'reaction' property
+            elseif (is_array($r) && !empty($r['reaction'])) {
+                $emojiRaw = $r['reaction'];
+            }
+            // Structure 3: Key-Value map of user->reaction
+            elseif (is_array($r) && !empty($r['content'])) {
+                 $emojiRaw = $r['content']; 
+            }
+
+            if ($emojiRaw) {
+                $lower = strtolower($emojiRaw);
+                $emoji = $emojiMap[$lower] ?? $emojiRaw; // Use map or fallback to raw (if it IS an emoji)
+
+                if (!isset($aggregated[$emoji])) {
+                    $aggregated[$emoji] = 0;
+                }
+                $aggregated[$emoji]++;
+            }
+        }
+
+        // Sort by count descending
+        arsort($aggregated);
+        
+        return $aggregated;
+    }
+
+    /**
+     * Get recent participants for avatar display
+     * @param int $limit
+     * @return array List of ['user' => User|null, 'name' => string, 'email' => string]
+     */
+    public function getRecentParticipants($limit = 5)
+    {
+        $participants = [];
+
+        // 1. SCHEDULED: Use Calendar Entry
+        if ($this->status == self::STATUS_SCHEDULED) {
+            if ($this->calendarEntry) {
+                $attendeeIds = (new \yii\db\Query())
+                    ->select(['user_id'])
+                    ->from('calendar_entry_participant')
+                    ->where(['calendar_entry_id' => $this->calendarEntry->id, 'participation_state' => 2]) // Accepted
+                    ->limit($limit)
+                    ->column();
+                
+                if (!empty($attendeeIds)) {
+                     $users = User::find()->where(['id' => $attendeeIds])->all();
+                     foreach ($users as $u) {
+                         $participants[] = ['user' => $u, 'name' => $u->displayName, 'email' => $u->email];
+                     }
+                }
+            }
+        }
+        // 2. LIVE: Use Cache
+        elseif ($this->status == self::STATUS_LIVE) {
+            $key = 'jitsiMeetCloud8x8:participants:' . $this->id;
+            $cached = Yii::$app->cache->get($key);
+            if (is_array($cached)) {
+                // Reverse to show latest first
+                $cached = array_reverse($cached);
+                $count = 0;
+                foreach ($cached as $pKey) {
+                    if ($count >= $limit) break;
+                    
+                    // Parse Key: user_123, email_foo@bar.com, or raw ID
+                    if (strpos($pKey, 'user_') === 0) {
+                        $uid = substr($pKey, 5);
+                        $u = User::findOne($uid);
+                        if ($u) {
+                            $participants[] = ['user' => $u, 'name' => $u->displayName, 'email' => $u->email];
+                        }
+                    } elseif (strpos($pKey, 'email_') === 0) {
+                        $email = substr($pKey, 6);
+                        $u = User::findOne(['email' => $email]);
+                         if ($u) {
+                            $participants[] = ['user' => $u, 'name' => $u->displayName, 'email' => $u->email];
+                        } else {
+                            $participants[] = ['user' => null, 'name' => $email, 'email' => $email];
+                        }
+                    } else {
+                        // Raw ID - Guest
+                         $participants[] = ['user' => null, 'name' => 'Guest', 'email' => ''];
+                    }
+                    $count++;
+                }
+            }
+        }
+        // 3. ENDED: Use Speaker Stats (Recorded in DB)
+        elseif ($this->status == self::STATUS_ENDED) {
+             if (!empty($this->speaker_stats)) {
+                 $stats = json_decode($this->speaker_stats, true);
+                 if (is_array($stats)) {
+                     // 8x8 Stats format: {'id': {'displayName': '...', 'email': '...'}, ...}
+                     foreach ($stats as $id => $data) {
+                         if (count($participants) >= $limit) break;
+                         
+                         $name = $data['displayName'] ?? $data['name'] ?? 'Guest';
+                         $email = $data['email'] ?? '';
+                         
+                         // Try to find user by email
+                         $u = null;
+                         if (!empty($email)) {
+                             $u = User::findOne(['email' => $email]);
+                         }
+                         
+                         // If no email match, try existing match for name? (Risky, skip)
+                         
+                         $participants[] = ['user' => $u, 'name' => $name, 'email' => $email];
+                     }
+                 }
+             }
+        }
+
+        return $participants;
     }
 }

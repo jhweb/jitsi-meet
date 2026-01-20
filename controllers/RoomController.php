@@ -17,6 +17,8 @@ use humhub\modules\calendar\models\reminder\CalendarReminder;
 use humhub\modules\content\permissions\ManageContent;
 use humhub\modules\space\models\Space;
 use humhub\modules\space\models\Membership;
+use humhub\modules\calendar\models\CalendarEntryType;
+use humhub\modules\topic\models\Topic;
 use Yii;
 
 /**
@@ -35,6 +37,15 @@ class RoomController extends Controller
         ];
     }
 
+    /**
+     * Modal to create a new stream (Join Room)
+     */
+    public function actionCreate()
+    {
+        $model = new JoinRoomForm();
+        return $this->renderAjax('create_modal', ['model' => $model]);
+    }
+
     public function actionIndex()
     {
         $model = new JoinRoomForm();
@@ -45,6 +56,12 @@ class RoomController extends Controller
             // Cache the raw title for Webhook/Stream creation usage
             $cacheKey = 'jitsiMeetCloud8x8:roomTitle:' . strtolower($fixedName);
             Yii::$app->cache->set($cacheKey, $rawTitle, 3600);
+
+            // Cache Lobby Enabled Setting
+            if ($model->lobbyEnabled) {
+                $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($fixedName);
+                Yii::$app->cache->set($lobbyKey, true, 3600);
+            }
 
             return $this->redirect(['open', 'name' => $fixedName]);
         }
@@ -169,16 +186,53 @@ class RoomController extends Controller
                 }
             }
 
+            // Fetch Event Types
+            $types = [];
+            $allTypes = CalendarEntryType::find()->all();
+            foreach ($allTypes as $t) {
+                $types[$t->id] = $t->name;
+            }
+
             // Render modal form
             return $this->renderAjax('schedule_modal', [
                 'model' => $model,
                 'calendars' => $calendars,
+                'types' => $types,
                 'disabledOptions' => $disabledOptions,
                 'defaultCalendarGuid' => $user->contentContainerRecord->guid
             ]);
         }
 
         if ($model->load(Yii::$app->request->post())) {
+            // Validate Word Count (500 words)
+            // Validate Word Count (500 words)
+            // Use stricter whitespace splitting for count
+            $rawDesc = $model->description;
+            // Decode entities to treat &nbsp; as space
+            $decodedDesc = html_entity_decode($rawDesc);
+            $cleanDesc = strip_tags($decodedDesc);
+            $count = count(preg_split('~[^\p{L}\p{N}\']+~u', $cleanDesc, -1, PREG_SPLIT_NO_EMPTY));
+            
+            Yii::info("Jitsi Stream Validation: Desc Length: " . strlen($model->description) . ", PHP Word Count: " . $count, 'jitsi-meet-cloud-8x8');
+            
+            if ($count > 200) {
+                $model->addError('description', Yii::t('JitsiMeetCloud8x8Module.base', 'Description cannot exceed 200 words. Current count: {count}', ['count' => $count]));
+                
+                // Re-fetch data for view
+                $user = Yii::$app->user->getIdentity();
+                $calendars = [$user->contentContainerRecord->guid => $user->displayName]; // Simplified for error re-render
+                $types = [];
+                foreach (CalendarEntryType::find()->all() as $t) $types[$t->id] = $t->name;
+                
+                return $this->renderAjax('schedule_modal', [
+                    'model' => $model,
+                    'calendars' => $calendars, // Note: This might lose full list if valid, but good enough for error state
+                    'types' => $types,
+                    'disabledOptions' => [],
+                    'defaultCalendarGuid' => $user->contentContainerRecord->guid
+                ]);
+            }
+
             // Generate room name from title
             $model->room_name = $this->fixRoomName($model->title ?: 'Stream' . time());
             
@@ -234,6 +288,12 @@ class RoomController extends Controller
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
                         
+                        // Set Event Type
+                        $typeId = Yii::$app->request->post('type_id');
+                        if ($typeId) {
+                            $calendarEntry->type_id = $typeId;
+                        }
+                        
                         // Enable participation and ensure it's published mechanism
                         $calendarEntry->participant_info = 1; 
                         $calendarEntry->participation_mode = 2; // CalendarEntry::PARTICIPATION_MODE_ALL (Hardcoded to prevent undefined constant in older versions)
@@ -244,6 +304,13 @@ class RoomController extends Controller
                         if ($calendarEntry->save()) {
                             $model->calendar_entry_id = $calendarEntry->id;
                             $model->save();
+                            
+                            // Attach Topics
+                            $topics = Yii::$app->request->post('topics');
+                            if (!empty($topics)) {
+                                Topic::attach($calendarEntry->content, $topics);
+                            }
+
                             Yii::info("Created Calendar Entry {$calendarEntry->id} for Stream {$model->id}", 'jitsi-meet-cloud-8x8');
                         } else {
                             // Critical Failure: Calendar Entry invalid
@@ -476,13 +543,41 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException();
         }
 
-        $chatLogContent = null;
+        $chatMessages = [];
         if (!empty($stream->chat_log_url)) {
-            // Fetch chat log with a 3-second timeout to check availability/content
-            $context = stream_context_create(['http' => ['timeout' => 3]]); 
+            // Fetch chat log with a 5-second timeout
+            $context = stream_context_create(['http' => ['timeout' => 5]]); 
             $content = @file_get_contents($stream->chat_log_url, false, $context);
+            
             if ($content !== false) {
-                $chatLogContent = $content;
+                // Check for GZIP magic bytes (1f 8b)
+                if (strlen($content) >= 2 && ord($content[0]) == 0x1f && ord($content[1]) == 0x8b) {
+                    $decoded = @gzdecode($content);
+                    if ($decoded !== false) {
+                        $content = $decoded;
+                    }
+                }
+                
+                $data = json_decode($content, true);
+                if (is_array($data)) {
+                    // Try to find the messages array
+                    $candidates = [$data]; // start with root
+                    if (isset($data['messages'])) $candidates[] = $data['messages'];
+                    if (isset($data['data'])) $candidates[] = $data['data'];
+                    if (isset($data['payload'])) $candidates[] = $data['payload'];
+                    
+                    foreach ($candidates as $cand) {
+                        if (is_array($cand) && count($cand) > 0) {
+                            // Relaxed Heuristic: accept array if it looks list-like (indexed keys) or first element is array
+                            // Just check if it's a list of arrays
+                            $first = reset($cand);
+                            if (is_array($first)) {
+                                $chatMessages = $cand;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -497,7 +592,7 @@ class RoomController extends Controller
 
         return $this->renderAjax('modal_details', [
             'stream' => $stream,
-            'chatLogContent' => $chatLogContent,
+            'chatMessages' => $chatMessages,
             'screenSharingContent' => $screenSharingContent
         ]);
     }

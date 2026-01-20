@@ -141,6 +141,9 @@ class WebhookController extends Controller
             case 'RTCSTATS_UPLOADED':
                 $this->handleRtcstatsUploaded($roomName, $payload);
                 break;
+            case 'FEEDBACK':
+                $this->handleFeedback($roomName, $payload);
+                break;
             case 'SETTINGS_PROVISIONING':
                 return $this->handleSettingsProvisioning($roomName, $payload);
             default:
@@ -262,8 +265,8 @@ class WebhookController extends Controller
                 
                 // Initialize participant count with creator
                 if ($stream->isNewRecord || $stream->participant_count == 0) {
-                     $stream->participant_count = 1;
-                     $stream->active_count = 1;
+                     $stream->participant_count = 0;
+                     $stream->active_count = 0;
                      
                      // Pre-fill dedup cache so we don't double count when PARTICIPANT_JOINED arrives for creator
                      // We need the stream ID, but we might not have it if new record.
@@ -275,6 +278,12 @@ class WebhookController extends Controller
             $cachedTitle = $cache->get('jitsiMeetCloud8x8:roomTitle:' . strtolower($roomName));
             if ($cachedTitle) {
                 $stream->title = $cachedTitle;
+            }
+
+            // Set Lobby from Cache if new record
+            $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($roomName);
+            if ($cache->get($lobbyKey)) {
+                $stream->lobby_enabled = 1;
             }
         }
         
@@ -714,6 +723,37 @@ class WebhookController extends Controller
          $this->updateStreamMetadata($roomName, $payload, 'rtcstats_url');
     }
     
+    private function handleFeedback($roomName, $payload)
+    {
+        Yii::info("Jitsi Webhook: FEEDBACK for $roomName", 'jitsi-meet-cloud-8x8');
+        $sessionId = $payload['sessionId'] ?? null;
+        $data = $payload['data'] ?? [];
+
+        if (empty($data)) {
+            return;
+        }
+
+        $stream = $this->findStream($roomName, $sessionId);
+        if ($stream) {
+            $currentFeedback = json_decode($stream->feedback, true) ?? [];
+            
+            // Append new feedback
+            $currentFeedback[] = [
+                'rating' => $data['rating'] ?? 0,
+                'comment' => $data['comments'] ?? '',
+                'userId' => $data['userId'] ?? 'unknown',
+                'timestamp' => time()
+            ];
+
+            $stream->feedback = json_encode($currentFeedback);
+            if ($stream->save()) {
+                Yii::info("Jitsi Webhook: Saved FEEDBACK for stream {$stream->id}", 'jitsi-meet-cloud-8x8');
+            } else {
+                 Yii::error("Jitsi Webhook: Failed to save FEEDBACK. Errors: " . json_encode($stream->errors), 'jitsi-meet-cloud-8x8');
+            }
+        }
+    }
+
     private function handleLiveStreamStarted($roomName, $payload)
     {
         Yii::info("Jitsi Webhook: LIVE_STREAM_STARTED for $roomName", 'jitsi-meet-cloud-8x8');
@@ -829,7 +869,20 @@ class WebhookController extends Controller
         // We use the general find method but without session ID since provisioning happens before session start
         $stream = $this->findStream($roomName, null);
 
+        // Check if Lobby is enabled via DB Stream or Cache (for immediate streams)
+        $lobbyEnabled = false;
+
         if ($stream && $stream->lobby_enabled) {
+            $lobbyEnabled = true;
+        } else {
+            // Check Cache for immediate streams
+            $lobbyKey = 'jitsiMeetCloud8x8:lobbyEnabled:' . strtolower($roomName);
+            if (Yii::$app->cache->get($lobbyKey)) {
+                $lobbyEnabled = true;
+            }
+        }
+
+        if ($lobbyEnabled) {
              Yii::info("Jitsi Webhook Provisioning: Enabling Lobby for $roomName", 'jitsi-meet-cloud-8x8');
              // Return 8x8 provisioning JSON
              return [

@@ -1,445 +1,553 @@
 <?php
-use humhub\libs\Html;
-use yii\helpers\Url;
+
+use humhub\widgets\ModalDialog;
 use humhub\widgets\ModalButton;
+use yii\helpers\Html;
+use humhub\modules\user\widgets\Image;
 
 /* @var $stream \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream */
+/* @var $chatLogContent string|null */
+/* @var $screenSharingContent array */
 
-$expirationTime = null;
-if (!empty($stream->end_time)) {
-    // 24 hours after end time
-    $expirationTime = strtotime($stream->end_time) + (24 * 60 * 60);
+// Calculate availability
+$hasRecording = (!empty($stream->recording_url) || $stream->has_recording);
+$hasHighlights = !empty($stream->highlights_url);
+$hasChat = !empty($stream->chat_log_url);
+$polls = $stream->getPolls();
+$hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls) || $hasChat);
+$hasTranscript = !empty($stream->transcription_url);
+$hasExtraFiles = !empty($stream->file_urls);
+$feedback = $stream->getFeedback();
+$hasFeedback = !empty($feedback);
+
+// Status checks (processing/expired)
+$isProcessing = false;
+$isExpired = false;
+$secondsRemaining = 0;
+
+if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream::STATUS_ENDED) {
+    if (!empty($stream->end_time)) {
+        $secondsSinceEnd = time() - strtotime($stream->end_time);
+        
+        // Processing Check (< 1 hour and no data)
+        if (!$hasRecording && !$hasHighlights && !$hasChat && $secondsSinceEnd < 3600) {
+            $isProcessing = true;
+        }
+        
+        // Expiration Check (> 24 hours)
+        if ($secondsSinceEnd > (24 * 60 * 60)) {
+            $isExpired = true;
+        } else {
+            $secondsRemaining = (24 * 60 * 60) - $secondsSinceEnd;
+        }
+    }
 }
 ?>
 
-<div class="modal-dialog modal-dialog-medium animated fadeIn">
-    <div class="modal-content jitsi-stream-details">
-        <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" data-modal-close aria-hidden="true">&times;</button>
-            <h4 class="modal-title" id="myModalLabel">
-                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Stream Recording & Downloads'); ?>
-            </h4>
+<?php ModalDialog::begin(['size' => 'large', 'class' => 'jitsi-modal-overrides jitsi-stream-details']) ?>
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">
+            <?= Html::encode($stream->title) ?>
+            <br>
+            <small style="font-size: 13px; color: var(--jitsi-text-secondary);">
+                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Streamed on {date}', ['date' => Yii::$app->formatter->asDate($stream->start_time, 'long')]) ?>
+            </small>
+        </h4>
+        
+        <!-- 24h Expiration Countdown -->
+        <?php if (!$isExpired && !$isProcessing && $secondsRemaining > 0): ?>
+        <div style="margin-top: 10px; font-size: 13px; color: #e67e22; background: rgba(230, 126, 34, 0.1); padding: 5px 10px; border-radius: 4px; display: inline-block;">
+            <i class="fa fa-clock-o"></i> 
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Links expire in {time}', [
+                'time' => Yii::$app->formatter->asDuration($secondsRemaining)
+            ]) ?>
         </div>
-        <div class="modal-body">
-            <div class="text-center">
-                <h3><?= Html::encode($stream->title ?: $stream->room_name) ?></h3>
-                <p class="text-muted" style="margin-bottom: 5px;">
-                    <small>Room name: <?= Html::encode($stream->room_name) ?></small>
-                </p>
-                <p class="text-muted">
-                    Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
-                    <br>
-                    Duration: <?= $stream->getDuration() ?>
-                </p>
+        <?php endif; ?>
+    </div>
 
-                <?php if ($expirationTime && time() < $expirationTime): ?>
-                    <div class="alert alert-warning" style="margin-top: 15px;">
-                        <strong>Downloads Expire In:</strong> <span id="expiration-timer">Calculcating...</span>
-                    </div>
-                <?php else: ?>
-                    <div class="alert alert-danger" style="margin-top: 15px;">
-                        <strong>Downloads Expired</strong>
-                    </div>
-                <?php endif; ?>
+    <div class="modal-body">
+        
+        <?php if ($isProcessing): ?>
+            <div class="alert alert-info">
+                <i class="fa fa-spinner fa-spin"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Stream data is currently processing. Please check back later.') ?>
+            </div>
+        <?php else: ?>
+
+            <div class="tab-menu">
+                <ul class="nav nav-tabs" role="tablist">
+                    <?php 
+                        // Determine default active tab
+                        $activeTab = 'downloads'; // Default fallback
+                        if (($hasRecording || $hasHighlights) && !$isExpired) {
+                            $activeTab = 'watch';
+                        } elseif ($hasSessionData && !$hasRecording && !$hasHighlights) {
+                           // If no recordings but session data, maybe prefer session? 
+                           // But user asked for Downloads first if blank.
+                           // Let's stick to Downloads as secondary default.
+                        }
+                        
+                        // Override: if Downloads is default but no content for it (unlikely as it has generic files), 
+                        // actually Downloads is always safe fallback.
+                    ?>
+
+                    <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
+                    <li role="presentation" class="<?= ($activeTab == 'watch') ? 'active' : '' ?>">
+                        <a href="#tab-watch" aria-controls="tab-watch" role="tab" data-toggle="tab">
+                            <i class="fa fa-play-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Watch Replay') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    
+                    <li role="presentation" class="<?= ($activeTab == 'downloads') ? 'active' : '' ?>">
+                        <a href="#tab-downloads" aria-controls="tab-downloads" role="tab" data-toggle="tab">
+                            <i class="fa fa-download"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Downloads') ?>
+                        </a>
+                    </li>
+
+                    <?php if ($hasSessionData): ?>
+                    <li role="presentation">
+                        <a href="#tab-session" aria-controls="tab-session" role="tab" data-toggle="tab">
+                            <i class="fa fa-bar-chart"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Session Data') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
+                    <?php if ($hasChat): ?>
+                    <li role="presentation">
+                        <a href="#tab-chat" aria-controls="tab-chat" role="tab" data-toggle="tab">
+                            <i class="fa fa-comments"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
+                    <?php if ($hasFeedback): ?>
+                    <li role="presentation">
+                        <a href="#tab-feedback" aria-controls="tab-feedback" role="tab" data-toggle="tab">
+                            <i class="fa fa-star"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Feedback') ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
             </div>
 
-            <hr>
-
-            <?php
-            use humhub\widgets\Tabs;
-            
-            // 1. Capture Downloads Content
-            ob_start();
-            ?>
-            <div class="list-group">
-                <?php 
-                $isExpired = ($expirationTime && time() >= $expirationTime);
-                $disabledStyle = $isExpired ? 'pointer-events: none; opacity: 0.5; background-color: #f5f5f5;' : '';
-                ?>
-                <!-- YouTube Stream Link (Separate from downloads section header, per user request placed in top area or here at top of list) -->
-                <?php if (!empty($stream->ytstream_url) && !$isExpired): ?>
-                    <a href="<?= Html::encode($stream->ytstream_url) ?>" target="_blank" class="list-group-item" style="color: #333;">
-                         <i class="fa fa-youtube-play fa-fw" style="margin-right: 10px; color: #ff0000;"></i> 
-                         Open on YouTube
-                         <span class="pull-right"><i class="fa fa-external-link"></i></span>
-                    </a>
-                <?php endif; ?>
-
-                <?php if (!empty($stream->recording_url)): ?>
-                    <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-video-camera fa-fw" style="margin-right: 10px;"></i> 
-                        Download Video Recording
-                        <span class="pull-right"><i class="fa fa-download"></i></span>
-                    </a>
-                <?php elseif ($stream->has_recording && !$isExpired): ?>
-                    <div class="list-group-item disabled" style="color: #999;">
-                        <i class="fa fa-spinner fa-fw fa-pulse" style="margin-right: 10px;"></i> 
-                        Processing Video Recording...
-                    </div>
-                <?php endif; ?>
-
-                <?php if (!empty($stream->highlights_url)): ?>
-                    <a href="<?= Html::encode($stream->highlights_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-film fa-fw" style="margin-right: 10px;"></i>
-                        Download Highlights (90s)
-                        <span class="pull-right"><i class="fa fa-download"></i></span>
-                    </a>
-                <?php elseif ($stream->has_recording && !$isExpired): ?>
-                    <div class="list-group-item disabled" style="color: #999;">
-                        <i class="fa fa-spinner fa-fw fa-pulse" style="margin-right: 10px;"></i> 
-                        Processing Highlights...
-                    </div>
-                <?php endif; ?>
-
-                <?php if (!empty($stream->transcription_url)): ?>
-                    <a href="<?= Html::encode($stream->transcription_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-file-text-o fa-fw" style="margin-right: 10px;"></i>
-                        Download Transcript
-                        <span class="pull-right"><i class="fa fa-download"></i></span>
-                    </a>
-                <?php endif; ?>
-                <?php if (!empty($stream->chat_log_url)): ?>
-                    <a href="<?= Html::encode($stream->chat_log_url) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-comments-o fa-fw" style="margin-right: 10px;"></i>
-                        Download Chat Log
-                        <span class="pull-right"><i class="fa fa-download"></i></span>
-                    </a>
-                <?php endif; ?>
-                <?php 
-                $files = $stream->getFiles();
-                if (!empty($files)): 
-                    foreach($files as $index => $fileUrl):
-                ?>
-                    <a href="<?= Html::encode($fileUrl) ?>" target="_blank" class="list-group-item" style="<?= $disabledStyle ?>">
-                        <i class="fa fa-file-o fa-fw" style="margin-right: 10px;"></i>
-                        Download File <?= $index + 1 ?>
-                        <span class="pull-right"><i class="fa fa-download"></i></span>
-                    </a>
-                <?php endforeach; endif; ?>
-                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($stream->transcription_url) && empty($stream->chat_log_url) && empty($files) && $isExpired): ?>
-                    <div class="text-center text-muted" style="padding: 20px;">
-                        No downloads available for this stream.
-                    </div>
-                <?php endif; ?>
-            </div>
-            <?php
-            $downloadsContent = ob_get_clean();
-
-             // 2. Capture Chat Log Content
-            $chatTabContent = '';
-            if (!empty($chatLogContent)) {
-                 $chatData = json_decode($chatLogContent, true);
-                 $messages = $chatData['messages'] ?? [];
-                 
-                 $chatTabContent = '<div class="chat-log-container">';
-                 
-                 if (!empty($messages) && is_array($messages)) {
-                     $chatTabContent .= '<ul class="media-list chat-log-list">';
-                     foreach ($messages as $msg) {
-                         $name = Html::encode($msg['name'] ?? 'Unknown');
-                         $text = Html::encode($msg['content'] ?? '');
-                         $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime($msg['timestamp'] / 1000) : ''; 
-                         
-                         $chatTabContent .= '<li class="media chat-log-entry">';
-                         $chatTabContent .= '<div class="media-body">';
-                         $chatTabContent .= '<h6 class="media-heading">' . $name . ' <small class="pull-right date">' . $time . '</small></h6>';
-                         $chatTabContent .= '<p class="content">' . $text . '</p>';
-                         $chatTabContent .= '</div>';
-                         $chatTabContent .= '</li>';
-                     }
-                     $chatTabContent .= '</ul>';
-                 } else {
-                     // Fallback 
-                     $chatTabContent .= '<pre class="chat-log-raw">' . Html::encode($chatLogContent) . '</pre>';
-                 }
-                 $chatTabContent .= '</div>';
-            }
-
-            // 3. Capture Watch Tab Content
-            ob_start();
-            ?>
-            <div style="padding: 15px;">
-                <?php if (!empty($stream->recording_url)): ?>
-                    <div style="margin-bottom: 20px;">
-                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Full Recording</h5>
-                        <div class="embed-responsive embed-responsive-16by9" style="background: #000; border-radius: 4px;">
-                            <video class="embed-responsive-item" controls controlsList="nodownload">
-                                <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>
-                        </div>
-                    </div>
-                <?php elseif ($stream->has_recording && !$isExpired): ?>
-                    <div class="alert alert-info">
-                        <i class="fa fa-spinner fa-pulse"></i> Full recording is still processing...
-                    </div>
-                <?php endif; ?>
-
-                <?php if (!empty($stream->highlights_url)): ?>
-                    <div style="margin-bottom: 20px;">
-                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Highlights (90s Segment)</h5>
-                        <div class="embed-responsive embed-responsive-16by9" style="background: #000; border-radius: 4px;">
-                            <video class="embed-responsive-item" controls controlsList="nodownload">
+            <div class="tab-content" style="padding-top: 20px;">
+                
+                <!-- WATCH TAB -->
+                <?php if (($hasRecording || $hasHighlights) && !$isExpired): ?>
+                <div role="tabpanel" class="tab-pane <?= ($activeTab == 'watch') ? 'active' : '' ?>" id="tab-watch">
+                    
+                    <?php if ($hasHighlights): ?>
+                        <div class="video-container" style="margin-bottom: 30px;">
+                            <h5><i class="fa fa-film"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights') ?></h5>
+                            <video width="100%" controls style="background: #000; border-radius: 8px;" preload="metadata">
                                 <source src="<?= Html::encode($stream->highlights_url) ?>" type="video/mp4">
-                                Your browser does not support the video tag.
+                                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
                             </video>
-                        </div>
-                    </div>
-                <?php elseif (!$isExpired): ?>
-                     <!-- Don't show highlights placeholder if main recording is also processing, to avoid clutter. Or show if you prefer. -->
-                <?php endif; ?>
-
-                <?php if (!empty($screenSharingContent) && is_array($screenSharingContent)): ?>
-                    <div style="margin-bottom: 20px;">
-                        <h5 style="font-weight: bold; color: #555; margin-bottom: 10px;">Screen Sharing History</h5>
-                        <div class="row" style="display: flex; flex-wrap: wrap;">
-                        <?php foreach ($screenSharingContent as $scIdx => $scUrl): 
-                             // Defensive check: if $scUrl is an array, try to find 'url' or 'link' key, otherwise ignore
-                             $imgSrc = is_string($scUrl) ? $scUrl : ($scUrl['url'] ?? $scUrl['link'] ?? null);
-                             if (!$imgSrc) continue;
-                        ?>
-                            <div class="col-xs-6 col-md-4" style="margin-bottom: 15px;">
-                                <a href="<?= Html::encode($imgSrc) ?>" target="_blank" class="thumbnail" style="display: block; margin-bottom: 0;">
-                                    <img src="<?= Html::encode($imgSrc) ?>" alt="Screenshot <?= $scIdx + 1 ?>" style="width: 100%; height: auto; display: block;">
+                            <div class="text-right" style="margin-top: 5px;">
+                                <a href="<?= Html::encode($stream->highlights_url) ?>" target="_blank" class="btn btn-default btn-sm">
+                                    <i class="fa fa-external-link"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open in new tab') ?>
                                 </a>
                             </div>
-                        <?php endforeach; ?>
                         </div>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if (empty($stream->recording_url) && empty($stream->highlights_url) && empty($screenSharingContent) && $isExpired): ?>
-                    <div class="text-center text-muted" style="padding: 20px;">
-                        No video or screenshots available to watch.
-                    </div>
-                <?php endif; ?>
-            </div>
-            <?php
-            $watchTabContent = ob_get_clean();
+                    <?php endif; ?>
 
-            // 4. Capture Session Data (Polls/Reactions)
-            ob_start();
-            ?>
-             <div class="list-group">
-                <!-- Reactions -->
-                <?php if (!empty($stream->reactions)): ?>
-                     <div class="list-group-item">
-                        <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
-                             <i class="fa fa-smile-o fa-fw" style="margin-right: 5px;"></i> Reactions
-                        </h5>
-                        <div style="margin-top: 10px;">
-                        <?php 
-                            $reactionsData = json_decode($stream->reactions, true);
-                            if (is_array($reactionsData)):
-                        ?>
-                            <ul class="list-unstyled" style="margin-left: 10px;">
-                                <?php foreach ($reactionsData as $reaction): ?>
-                                    <?php 
-                                        $emoji = '🙂';
-                                        switch ($reaction['reaction'] ?? '') {
-                                            case 'like': $emoji = '👍'; break;
-                                            case 'thumbsup': $emoji = '👍'; break;
-                                            case 'claps': $emoji = '👏'; break;
-                                            case 'applause': $emoji = '👏'; break;
-                                            case 'smile': $emoji = '😄'; break;
-                                            case 'surprised': $emoji = '😮'; break;
-                                            case 'silent': $emoji = '😶'; break;
-                                            case 'silence': $emoji = '😶'; break;
-                                            case 'boo': $emoji = '👎'; break;
-                                            case 'love': $emoji = '❤️'; break;
-                                            case 'laugh': $emoji = '😂'; break;
-                                            default: $emoji = '🙂';
-                                        }
-                                        $name = Html::encode($reaction['participantName'] ?? 'Unknown');
-                                    ?>
-                                    <li style="margin-bottom: 5px;">
-                                        <span style="display: inline-block; width: 20px; text-align: center; margin-right: 5px;"><?= $emoji ?></span> 
-                                        <strong><?= $name ?></strong> 
-                                        <span class="text-muted" style="font-size: 10px;">
-                                            (<?= isset($reaction['timestamp']) ? Yii::$app->formatter->asTime($reaction['timestamp'] / 1000) : '' ?>)
-                                        </span>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php else: ?>
-                            <pre><?= Html::encode($stream->reactions) ?></pre>
-                        <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Polls -->
-                <?php 
-                if (!empty($stream->polls)) {
-                     $pollsData = json_decode($stream->polls, true);
-                     if (!empty($pollsData)) {
-                        foreach ($pollsData as $pollId => $poll) {
-                            $results = [];
-                            $totalVotes = 0;
-                            foreach ($poll['options'] as $opt) {
-                                $results[$opt['key']] = 0;
-                            }
-                            if (isset($poll['votes'])) {
-                                foreach ($poll['votes'] as $voterId => $vote) {
-                                    foreach ($vote['keys'] as $k) {
-                                        if (isset($results[$k])) {
-                                            $results[$k]++;
-                                            $totalVotes++;
-                                        } elseif (array_key_exists($k, $results)) {
-                                            $results[$k]++;
-                                            $totalVotes++;
-                                        }
-                                    }
-                                }
-                            }
-                            ?>
-                            <div class="list-group-item">
-                                <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
-                                    <i class="fa fa-bar-chart fa-fw" style="margin-right: 5px;"></i> Poll: <?= Html::encode($poll['question']) ?>
-                                </h5>
-                                <div style="margin-top: 10px;">
-                                    <ul class="list-unstyled" style="margin-left: 10px;">
-                                        <?php foreach ($poll['options'] as $opt): 
-                                            $count = $results[$opt['key']] ?? 0;
-                                            $percent = $totalVotes > 0 ? round(($count / $totalVotes) * 100) : 0;
-                                        ?>
-                                        <li style="margin-bottom: 8px;">
-                                            <strong><?= Html::encode($opt['name']) ?></strong>
-                                            <span class="pull-right text-muted"><?= $count ?> votes (<?= $percent ?>%)</span>
-                                            <div class="progress" style="height: 5px; margin-bottom:0;">
-                                                <div class="progress-bar" role="progressbar" style="width: <?= $percent ?>%; background-color: #2196F3;"></div>
-                                            </div>
-                                        </li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                </div>
+                    <?php if ($hasRecording): ?>
+                        <div class="video-container" style="margin-bottom: 20px;">
+                            <?php if ($hasHighlights): ?><h5><i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Session') ?></h5><?php endif; ?>
+                             <video width="100%" controls <?php if($thumb = $stream->getThumbnailUrl()): ?>poster="<?= Html::encode($thumb) ?>"<?php endif; ?> style="background: #000; border-radius: 8px;" preload="metadata">
+                                <source src="<?= Html::encode($stream->recording_url) ?>" type="video/mp4">
+                                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Your browser does not support the video tag.') ?>
+                            </video> 
+                            <div class="text-right" style="margin-top: 5px;">
+                                <a href="<?= Html::encode($stream->recording_url) ?>" target="_blank" class="btn btn-default btn-sm">
+                                    <i class="fa fa-external-link"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Open in new tab') ?>
+                                </a>
                             </div>
-                            <?php
-                        }
-                     }
-                }
-                ?>
-                <?php 
-                // Always try to show Speaker Stats section if we are in this tab, 
-                // or at least if we want to confirm they are missing.
-                // For now, let's show the header and "No stats" if empty, to confirm the UI is working.
-                $hasStats = !empty($stream->speaker_stats);
-                $speakerStats = $hasStats ? json_decode($stream->speaker_stats, true) : [];
-                ?>
-                <div class="list-group-item">
-                    <h5 class="list-group-item-heading" style="margin-bottom: 10px;">
-                        <i class="fa fa-microphone fa-fw" style="margin-right: 5px;"></i> Speaker Stats
-                    </h5>
-                    <div style="margin-top: 10px;">
-                        <?php if (!empty($speakerStats)): 
-                            // Sort by speaking time (descending)
-                            uasort($speakerStats, function($a, $b) {
-                                return ($b['time'] ?? 0) - ($a['time'] ?? 0);
-                            });
-                        ?>
-                        <table class="table table-condensed" style="margin-bottom: 0; font-size: 12px;">
-                            <thead>
-                                <tr>
-                                    <th>Participant</th>
-                                    <th class="text-right">Speaking Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($speakerStats as $stat): 
-                                    $ms = $stat['time'] ?? 0;
-                                    $seconds = floor($ms / 1000);
-                                    $minutes = floor($seconds / 60);
-                                    $seconds = $seconds % 60;
-                                    $durationStr = $minutes . 'm ' . $seconds . 's';
-                                    if ($minutes >= 60) {
-                                        $hours = floor($minutes / 60);
-                                        $minutes = $minutes % 60;
-                                        $durationStr = $hours . 'h ' . $minutes . 'm ' . $seconds . 's';
-                                    }
-                                    $displayName = Html::encode($stat['name'] ?? 'Unknown');
-                                ?>
-                                <tr>
-                                    <td><?= $displayName ?></td>
-                                    <td class="text-right"><?= $durationStr ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php else: ?>
-                            <p class="text-muted">No speaker statistics recorded.</p>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($hasHighlights && !$hasRecording): ?>
+                        <!-- Case handled above by showing highlights player -->
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- DOWNLOADS TAB -->
+                <div role="tabpanel" class="tab-pane <?= ($activeTab == 'downloads') ? 'active' : '' ?>" id="tab-downloads">
+                    <?php if ($isExpired): ?>
+                        <div class="alert alert-warning" style="margin-bottom: 20px;">
+                            <i class="fa fa-exclamation-triangle"></i> 
+                            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'The download period for this stream has expired (24 hours). Files are no longer available from the cloud cache.') ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="list-group">
+                        <?php if ($hasRecording): ?>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->recording_url) ?>" class="list-group-item" download target="_blank">
+                                    <h4 class="list-group-item-heading"><i class="fa fa-file-video-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the MP4 video file of the entire session.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
+
+                        <?php if ($hasHighlights): ?>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->highlights_url) ?>" class="list-group-item" download target="_blank">
+                                    <h4 class="list-group-item-heading"><i class="fa fa-film"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Auto-generated highlights summary.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($stream->ytstream_url)): ?>
+                            <a href="<?= Html::encode($stream->ytstream_url) ?>" class="list-group-item" target="_blank">
+                                <h4 class="list-group-item-heading"><i class="fa fa-youtube-play"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'YouTube Stream') ?></h4>
+                                <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'View the archived stream on YouTube.') ?></p>
+                            </a>
+                        <?php endif; ?>
+
+                        <?php if ($hasChat): ?>
+                                <?php if (!$isExpired): ?>
+                                    <a href="<?= Html::encode($stream->chat_log_url) ?>" class="list-group-item" target="_blank" download>
+                                        <h4 class="list-group-item-heading"><i class="fa fa-comments-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log') ?></h4>
+                                        <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the full chat history.') ?></p>
+                                    </a>
+                                <?php else: ?>
+                                    <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                        <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log (Expired)') ?></h4>
+                                        <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                    </div>
+                                <?php endif; ?>
+                        <?php endif; ?>
+
+                        <?php if ($hasTranscript): ?>
+                            <?php if (!$isExpired): ?>
+                                <a href="<?= Html::encode($stream->transcription_url) ?>" class="list-group-item" target="_blank" download>
+                                    <h4 class="list-group-item-heading"><i class="fa fa-file-text-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download text transcription.') ?></p>
+                                </a>
+                            <?php else: ?>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
+                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription (Expired)') ?></h4>
+                                    <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <?php if (!$hasRecording && !$hasHighlights && !$hasChat && !$hasTranscript && !$hasExtraFiles && empty($stream->ytstream_url)): ?>
+                        <div class="text-center text-muted" style="padding: 30px;">
+                             <?= Yii::t('JitsiMeetCloud8x8Module.base', 'No media files available for this session.') ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- SESSION DATA TAB -->
+                <?php if ($hasSessionData): ?>
+                <div role="tabpanel" class="tab-pane" id="tab-session">
+                    <div class="row">
+                        <div class="col-md-6">
+                            
+                            <!-- RELOCATED REACTIONS -->
+                            <?php $reactions = $stream->getAggregatedReactions(); ?>
+                            <?php if (!empty($reactions)): ?>
+                                <h4><i class="fa fa-smile-o"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Reactions') ?></h4>
+                                <div class="reactions-container" style="margin-bottom: 20px;">
+                                    <?php foreach ($reactions as $emoji => $count): ?>
+                                        <span class="badge" style="background: var(--jitsi-card-bg); color: var(--jitsi-text-primary); border: 1px solid var(--jitsi-border-color); font-size: 14px; margin-right: 5px; padding: 5px 10px;">
+                                            <?= $emoji ?> <span style="margin-left: 5px; font-weight: bold; color: var(--primary);"><?= $count ?></span>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                                <hr>
+                            <?php endif; ?>
+
+                            <h4><i class="fa fa-users"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Participation') ?></h4>
+                            <table class="table">
+                                <tr>
+                                    <td><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Peak Participants') ?></td>
+                                    <td><strong><?= $stream->participant_count ?></strong></td>
+                                </tr>
+                                <tr>
+                                    <td><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Active Participants (Mic/Cam)') ?></td>
+                                    <td><strong><?= $stream->active_count ?></strong></td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Avatars -->
+                            <?php $participants = $stream->getRecentParticipants(10); ?>
+                            <?php if (!empty($participants)): ?>
+                                <div style="margin-top: 10px;">
+                                    <label><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Members who Participated') ?></label>
+                                    <div class="avatar-stack" style="margin-left: 2px;">
+                                        <?php foreach ($participants as $p): ?>
+                                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                                <?php if ($p['user']): ?>
+                                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                                <?php else: ?>
+                                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                         <div class="col-md-12">
+                            <hr>
+
+                            <?php if (!empty($polls)): ?>
+                                <h4><i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Poll Results') ?></h4>
+                                <?php foreach ($polls as $poll): ?>
+                                    <?php 
+                                        $options = $poll['options'] ?? [];
+                                        $votes = $poll['votes'] ?? [];
+                                        $totalVotes = count($votes);
+                                        
+                                        // Aggregate
+                                        $results = [];
+                                        foreach ($options as $opt) $results[$opt['key']] = 0;
+                                        foreach ($votes as $vote) {
+                                            foreach ($vote['keys'] as $k) {
+                                                if (isset($results[$k])) $results[$k]++;
+                                            }
+                                        }
+                                    ?>
+                                    <div class="panel panel-default" style="margin-bottom: 10px;">
+                                        <div class="panel-heading" style="padding: 10px; font-weight: bold;">
+                                            <?= Html::encode($poll['question']) ?>
+                                            <span class="pull-right badge"><?= $totalVotes ?> votes</span>
+                                        </div>
+                                        <ul class="list-group">
+                                            <?php foreach ($options as $opt): 
+                                                $count = $results[$opt['key']] ?? 0;
+                                                $percent = ($totalVotes > 0) ? round(($count / $totalVotes) * 100) : 0;
+                                            ?>
+                                            <li class="list-group-item" style="border: none; padding: 8px 15px;">
+                                                <div style="margin-bottom: 2px;">
+                                                    <?= Html::encode($opt['name']) ?>
+                                                    <span class="pull-right text-muted" style="font-size: 11px;"><?= $count ?> (<?= $percent ?>%)</span>
+                                                </div>
+                                                <div class="progress" style="height: 6px; margin-bottom: 0;">
+                                                    <div class="progress-bar progress-bar-info" role="progressbar" 
+                                                         style="width: <?= $percent ?>%; background-color: var(--primary);"></div>
+                                                </div>
+                                            </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="text-muted text-center"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No polls created during this session.') ?></p>
+                            <?php endif; ?>
+                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
+                
+                <!-- CHAT LOG TAB -->
+                <?php if ($hasChat): ?>
+                <div role="tabpanel" class="tab-pane" id="tab-chat">
+                     <div class="row">
+                        <div class="col-md-12">
+                            <?php if (!empty($chatMessages) && count($chatMessages) > 0): ?>
+                            <div class="chat-history-container" style="max-height: 500px; overflow-y: auto; border: 1px solid var(--jitsi-border-color); border-radius: 4px; padding: 15px; background: var(--jitsi-card-bg);">
+                                <ul class="media-list">
+                                    <?php foreach ($chatMessages as $msg): 
+                                        // Sender Name Parsing
+                                        $sender = $msg['nick'] 
+                                               ?? $msg['displayName'] 
+                                               ?? $msg['name'] 
+                                               ?? $msg['endpointName'] 
+                                               ?? Yii::t('JitsiMeetCloud8x8Module.base', 'Unknown Participant');
+                                               
+                                        $text = $msg['message'] 
+                                             ?? $msg['text'] 
+                                             ?? $msg['body'] 
+                                             ?? $msg['content'] 
+                                             ?? $msg['msg'] 
+                                             ?? '';
+                                        $time = isset($msg['timestamp']) ? Yii::$app->formatter->asTime(date('Y-m-d H:i:s', $msg['timestamp'] / 1000), 'short') : '';
+                                        
+                                        // Skip empty messages
+                                        if (empty(trim($text))) continue;
+
+                                        // GIF/Image cleanup: Handle 8x8 specific "gif[url]" format
+                                        // This often comes as "gif[https://...]"
+                                        if (preg_match('/^gif\[(https?:\/\/\S+)\]$/i', trim($text), $matches)) {
+                                            $text = $matches[1];
+                                        }
+
+                                        // Image Parsing (Convert URLs ending in image extensions to img tags)
+                                        $text = preg_replace(
+                                            '/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp|svg))(?:\?\S*)?/i', 
+                                            '<br><a href="$1" target="_blank"><img src="$1" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; border: 1px solid #444;" /></a><br>', 
+                                            Html::encode($text)
+                                        );
+
+                                        // Emoji Shortcode Mapping
+                                        $chatEmojiMap = [
+                                            ':smile:' => '😊',
+                                            ':smiley:' => '😃',
+                                            ':grinning:' => '😀',
+                                            ':beer:' => '🍺',
+                                            ':beers:' => '🍻',
+                                            ':angel:' => '😇',
+                                            ':love:' => '❤️',
+                                            ':heart:' => '❤️',
+                                            ':thumbsup:' => '👍',
+                                            ':thumbsdown:' => '👎',
+                                            ':clap:' => '👏',
+                                            ':fire:' => '🔥',
+                                            ':joy:' => '😂',
+                                            ':laugh:' => '😆',
+                                            ':sad:' => '😢',
+                                            ':cry:' => '😭',
+                                            ':angry:' => '😠',
+                                            ':surprised:' => '😮',
+                                            ':wink:' => '😉',
+                                            ':tongue:' => 'muk',
+                                            ':cool:' => '😎',
+                                            ':party:' => '🎉',
+                                            // Add more common Jitsi/Generic ones
+                                        ];
+                                        
+                                        $text = strtr($text, $chatEmojiMap);
+                                        
+                                        // Determine Avatar
+                                        $avatarUrl = $msg['avatar'] ?? null;
+                                    ?>
+                                    <li class="media" style="margin-top: 10px; border-bottom: 1px solid var(--jitsi-border-color); padding-bottom: 10px;">
+                                        <div class="media-left">
+                                            <?php if ($avatarUrl): ?>
+                                                <img class="media-object img-circle" src="<?= Html::encode($avatarUrl) ?>" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                            <?php else: ?>
+                                                <?php 
+                                                    // Antigravity Fix: Try to resolve HumHub user safely
+                                                    $hhUser = null;
+                                                    if (!empty($email)) {
+                                                        $hhUser = \humhub\modules\user\models\User::findOne(['email' => $email]);
+                                                    }
+                                                    if (!$hhUser && !empty($sender)) {
+                                                        // Try by username (display_name is not a column)
+                                                        $hhUser = \humhub\modules\user\models\User::findOne(['username' => $sender]);
+                                                    }
+                                                ?>
+                                                <?php if ($hhUser): ?>
+                                                    <?= Image::widget(['user' => $hhUser, 'width' => 32, 'link' => true]) ?>
+                                                <?php else: ?>
+                                                    <img class="media-object img-circle" src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($sender) ?>" style="width: 32px; height: 32px;">
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="media-body">
+                                            <h5 class="media-heading" style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">
+                                                <?= Html::encode($sender) ?> 
+                                                <small class="pull-right text-muted" style="font-size: 11px;"><?= $time ?></small>
+                                            </h5>
+                                            <div style="font-size: 13px; line-height: 1.4; color: var(--jitsi-text-primary);">
+                                                <?= nl2br($text) // Note: $text is already encoded above, except for the image tags we injected ?>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <?php else: ?>
+                                <div class="alert alert-warning">
+                                    <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat log file exists but contains no readable messages.') ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- FEEDBACK TAB -->
+                <?php if ($hasFeedback): ?>
+                <div role="tabpanel" class="tab-pane" id="tab-feedback">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4><i class="fa fa-star"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'User Feedback') ?></h4>
+                            <div class="list-group">
+                                <?php foreach ($feedback as $fb): ?>
+                                    <div class="list-group-item">
+                                        <div class="row">
+                                             <div class="col-xs-2 text-center">
+                                                 <h2 style="margin: 0; color: #f1c40f;"><?= $fb['rating'] ?><small>/5</small></h2>
+                                                 <div class="rating-stars" style="color: #f1c40f;">
+                                                     <?php for($i=1; $i<=5; $i++): ?>
+                                                         <i class="fa fa-star<?= ($i <= $fb['rating']) ? '' : '-o' ?>"></i>
+                                                     <?php endfor; ?>
+                                                 </div>
+                                             </div>
+                                             <div class="col-xs-10">
+                                                 <p class="list-group-item-text" style="font-size: 14px; margin-top: 5px;">
+                                                     <?= !empty($fb['comment']) ? Html::encode($fb['comment']) : '<i>No comment provided</i>' ?>
+                                                 </p>
+                                                 <small class="text-muted">
+                                                     <?= Yii::$app->formatter->asDatetime($fb['timestamp'], 'short') ?> 
+                                                     <?php if(isset($fb['userId']) && $fb['userId'] != 'unknown'): ?>
+                                                         <?php 
+                                                            $fbUser = \humhub\modules\user\models\User::findOne($fb['userId']);
+                                                            $fbName = $fbUser ? $fbUser->displayName : 'User ID: ' . $fb['userId'];
+                                                         ?>
+                                                         &bull; <?= Html::encode($fbName) ?>
+                                                     <?php endif; ?>
+                                                 </small>
+                                             </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
             </div>
-            <?php
-            $sessionDataContent = ob_get_clean();
-            
-            // Render Tabs
-            echo Tabs::widget([
-                'items' => [
-                    [
-                        'label' => 'Downloads',
-                        'content' => $downloadsContent,
-                        'active' => true,
-                    ],
-                    [
-                        'label' => 'Chat Log',
-                        'content' => $chatTabContent,
-                        'visible' => !empty($chatTabContent),
-                    ],
-                    [
-                        'label' => 'Watch',
-                        'content' => $watchTabContent,
-                        'visible' => (!$isExpired && ($stream->has_recording || !empty($stream->recording_url) || !empty($stream->highlights_url) || !empty($screenSharingContent))),
-                    ],
-                    [
-                        'label' => 'Session Data',
-                        'content' => $sessionDataContent,
-                        'visible' => (!empty($stream->reactions) || !empty($stream->polls) || !empty($stream->speaker_stats)),
-                    ],
-                ],
-            ]);
-            ?>
 
-        </div>
-        <div class="modal-footer">
-            <?= ModalButton::cancel('Close') ?>
-        </div>
+        <?php endif; ?>
+
     </div>
-</div>
-
-<script>
-    (function() {
-        var expirationTimestamp = <?= $expirationTime ? $expirationTime : 0 ?>;
-        
-        function updateTimer() {
-            var now = Math.floor(Date.now() / 1000);
-            var distance = expirationTimestamp - now;
-            
-            if (distance < 0) {
-                $('#expiration-timer').parent().removeClass('alert-warning').addClass('alert-danger');
-                $('#expiration-timer').parent().html('<strong>Downloads Expired</strong>');
-                clearInterval(timerInterval);
-                return;
+    
+    <div class="modal-footer">
+        <?php 
+        // Delete Button Logic (Creator/Admin)
+        $canDelete = false;
+        if (!Yii::$app->user->isGuest) {
+            if ($stream->creator_id == Yii::$app->user->id) {
+                $canDelete = true;
+            } elseif (Yii::$app->user->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->space && $stream->space->isAdmin()) {
+                $canDelete = true;
+            } elseif ($stream->calendarEntry && $stream->calendarEntry->content->container->can(\humhub\modules\content\permissions\ManageContent::class)) {
+                $canDelete = true;
             }
-            
-            var hours = Math.floor(distance / 3600);
-            var minutes = Math.floor((distance % 3600) / 60);
-            var seconds = Math.floor(distance % 60);
-            
-            $('#expiration-timer').text(
-                hours + "h " + minutes + "m " + seconds + "s "
-            );
         }
         
-        if (expirationTimestamp > 0) {
-            updateTimer();
-            var timerInterval = setInterval(updateTimer, 1000);
+        if ($canDelete): ?>
+            <?= Html::a(Yii::t('JitsiMeetCloud8x8Module.base', 'Delete'), \yii\helpers\Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
+                'class' => 'btn btn-danger pull-left',
+                'data-method' => 'post',
+                'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this stream?'),
+            ]) ?>
+        <?php endif; ?>
 
-            // Cleanup when modal is closed
-            $(document).one('hidden.bs.modal', '#globalModal', function () {
-                clearInterval(timerInterval);
-            });
-        }
-    })();
-</script>
+        <?= ModalButton::cancel(Yii::t('JitsiMeetCloud8x8Module.base', 'Close')) ?>
+    </div>
+
+<?php ModalDialog::end(); ?>

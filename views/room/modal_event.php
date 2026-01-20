@@ -15,7 +15,7 @@ use yii\helpers\Url;
 $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->user->id);
 ?>
 
-<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar"></i> ' . Html::encode($calendarEntry->title)]); ?>
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar"></i> ' . Html::encode($calendarEntry->title), 'class' => 'jitsi-modal-overrides']); ?>
 
 <div class="modal-body">
     <div class="event-details">
@@ -40,7 +40,7 @@ $isCreator = (!Yii::$app->user->isGuest && $stream->creator_id == Yii::$app->use
                 
                 <?php if (!empty($calendarEntry->description)): ?>
                 <div class="event-description" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">
-                    <?= Html::encode($calendarEntry->description) ?>
+                    <?= \humhub\modules\content\widgets\richtext\RichText::output($calendarEntry->description) ?>
                 </div>
                 <?php endif; ?>
 

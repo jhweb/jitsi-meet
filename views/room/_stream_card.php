@@ -12,7 +12,6 @@ $isLive = ($stream->status == JitsiLiveStream::STATUS_LIVE);
 $isEnded = ($stream->status == JitsiLiveStream::STATUS_ENDED);
 
 // 30-Minute Rule: Override Live status if Premature
-// Treat as Scheduled if started early (e.g. by creator for testing) but > 30m before start
 if ($isLive && $stream->scheduled_start) {
     if (strtotime($stream->scheduled_start) > (time() + 1800)) {
         $isLive = false;
@@ -20,11 +19,12 @@ if ($isLive && $stream->scheduled_start) {
     }
 }
 
-// For ended streams, calculate download availability
+// Logic for Ended Streams (Downloads/Expiration)
+$hasDownloads = false;
+$showDownloadButton = false;
+$isExpired = false;
+
 if ($isEnded) {
-    $hasDownloads = (!empty($stream->recording_url) || !empty($stream->transcription_url) || !empty($stream->chat_log_url) || !empty($stream->file_urls));
-    
-    $isExpired = false;
     if (!empty($stream->end_time)) {
         $secondsSinceEnd = time() - strtotime($stream->end_time);
         if ($secondsSinceEnd > (24 * 60 * 60)) {
@@ -35,84 +35,196 @@ if ($isEnded) {
     $hasRecording = ($stream->has_recording || !empty($stream->recording_url));
     $hasHighlights = !empty($stream->highlights_url);
     $hasChat = !empty($stream->chat_log_url);
-    $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions));
+    $polls = $stream->getPolls();
+    $hasSessionData = (($stream->participant_count > 1) || !empty($stream->reactions) || !empty($polls) || $hasChat);
     $hasTranscript = !empty($stream->transcription_url);
     $hasExtraFiles = !empty($stream->file_urls);
-
+    
+    // Show download button logic: show if there is ANY data to show
     $showDownloadButton = ($hasRecording || $hasHighlights || $hasChat || $hasSessionData || $hasTranscript || $hasExtraFiles);
 }
+
+// Determine Status Badge & Class
+$statusClass = '';
+$statusLabel = '';
+if ($isLive) {
+    $statusClass = 'live';
+    $statusLabel = 'LIVE';
+} elseif ($isScheduled) {
+    $statusClass = 'scheduled';
+    $statusLabel = 'SCHEDULED';
+} else {
+    $statusClass = 'ended';
+    $statusLabel = 'ENDED LIVE';
+}
+
+// Determine Creator
+$creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press';
 ?>
 
-<?php if ($isScheduled): ?>
-    <!-- Scheduled Card -->
-    <div class="stream-card scheduled" style="position: relative;">
-        <?php 
-        // Delete Permission Check
-        $canDelete = false;
-        if (!Yii::$app->user->isGuest) {
-            if ($stream->creator_id == Yii::$app->user->id) {
-                $canDelete = true;
-            } elseif (Yii::$app->user->isAdmin()) {
-                $canDelete = true;
-            } elseif ($stream->space && $stream->space->isAdmin()) {
-                $canDelete = true;
-            } elseif ($stream->calendarEntry && $stream->calendarEntry->content->container->can(\humhub\modules\content\permissions\ManageContent::class)) {
-                $canDelete = true;
-            }
+<div class="stream-card-v2 <?= $statusClass ?>">
+    
+    <!-- Delete Button (Preserved Logic) -->
+    <?php 
+    $canDelete = false;
+    if (!Yii::$app->user->isGuest) {
+        if ($stream->creator_id == Yii::$app->user->id) {
+            $canDelete = true;
+        } elseif (Yii::$app->user->isAdmin()) {
+            $canDelete = true;
+        } elseif ($stream->space && $stream->space->isAdmin()) {
+            $canDelete = true;
+        } elseif ($stream->calendarEntry && $stream->calendarEntry->content->container->can(\humhub\modules\content\permissions\ManageContent::class)) {
+            $canDelete = true;
         }
-        
-        if ($canDelete): ?>
-            <?= Html::a('<i class="fa fa-times"></i>', Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
-                'class' => 'stream-delete-btn',
-                'data-method' => 'post',
-                'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this scheduled stream?'),
-                'title' => Yii::t('JitsiMeetCloud8x8Module.base', 'Delete Stream'),
-                'style' => 'position: absolute; top: 10px; right: 10px; color: #ff0000; cursor: pointer; z-index: 100; font-size: 14px;'
-            ]) ?>
-        <?php endif; ?>
+    }
+    
+    if ($canDelete && ($isScheduled || $isEnded)): ?>
+        <?= Html::a('<i class="fa fa-times"></i>', Url::to(['/jitsi-meet-cloud-8x8/room/delete', 'id' => $stream->id]), [
+            'class' => 'stream-delete-btn',
+            'data-method' => 'post',
+            'data-confirm' => Yii::t('JitsiMeetCloud8x8Module.base', 'Are you sure you want to delete this stream?'),
+            'title' => Yii::t('JitsiMeetCloud8x8Module.base', 'Delete Stream')
+        ]) ?>
+    <?php endif; ?>
 
-        <div class="stream-badge scheduled-badge">
-            <i class="fa fa-clock-o"></i> SCHEDULED
+    <!-- HEADER: Creator & Status -->
+    <div class="col-header">
+        <div class="creator-info">
+            <div class="creator-avatar">
+                <?php if ($stream->creator): ?>
+                    <?= Image::widget(['user' => $stream->creator, 'width' => 36, 'link' => true]) ?>
+                <?php else: ?>
+                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="System" style="width: 36px; height: 36px; border-radius: 50%;">
+                <?php endif; ?>
+            </div>
+            <div class="creator-name">
+                <?= Html::encode($creatorName) ?>
+            </div>
         </div>
-        
-        <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
-            <?php if ($stream->creator): ?>
-                <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
-                    <?= Image::widget(['user' => $stream->creator, 'width' => 20, 'link' => false]) ?>
-                    <span style="margin-left: 5px;"><?= Html::encode($stream->creator->displayName) ?></span>
-                </a>
-            <?php else: ?>
-                The Oil Press
-            <?php endif; ?>
+        <div class="status-badge <?= $statusClass ?>">
+            <?php if ($isLive): ?><span class="pulsating-dot"></span><?php endif; ?>
+            <?= $statusLabel ?>
         </div>
-        
-        <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->getTitle()) ?>">
+    </div>
+
+    <!-- BODY: Title & Meta -->
+    <div class="col-body">
+        <div class="stream-title-v2" title="<?= Html::encode($stream->getTitle()) ?>">
             <?= Html::encode($stream->getTitle()) ?>
         </div>
-        <div class="stream-room-name-sub">
+        <div class="room-name-meta">
             Room name: <?= Html::encode($stream->room_name) ?>
         </div>
-        
-        <div class="stream-info">
-            <div class="countdown-display" style="font-size: 14px; font-weight: bold; color: #4a90d9; margin: 10px 0;">
-                <i class="fa fa-hourglass-half"></i>
-                <?= $stream->getCountdown() ?>
+        <?php if (!empty($stream->description)): ?>
+            <div class="stream-description text-muted" style="font-size: 12px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-height: 4.5em; line-height: 1.5em;">
+                <?= \humhub\modules\content\widgets\richtext\RichText::output($stream->description, ['exclude' => ['oembed']]) ?>
             </div>
-            <?php if ($stream->scheduled_start): ?>
-            <small>
-                <?= Yii::$app->formatter->asDatetime($stream->scheduled_start, 'medium') ?>
-            </small>
+        <?php endif; ?>
+
+        <!-- Meta Grid -->
+        <div class="stream-meta-grid">
+            <?php if ($isLive): ?>
+                <div class="meta-item">
+                    <i class="fa fa-clock-o"></i> 
+                    Started: <?= Yii::$app->formatter->asTime($stream->start_time) ?>
+                </div>
+                <div class="meta-item">
+                    <i class="fa fa-users"></i> 
+                    Users: <?= $stream->active_count > 0 ? $stream->active_count : 0 ?>
+                </div>
+                <!-- Avatars -->
+                <?php $participants = $stream->getRecentParticipants(5); ?>
+                <?php if (!empty($participants)): ?>
+                    <div class="avatar-stack" style="margin-left: 2px;">
+                        <?php foreach ($participants as $p): ?>
+                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                <?php if ($p['user']): ?>
+                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                <?php else: ?>
+                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            <?php elseif ($isScheduled): ?>
+                 <div class="meta-item" style="grid-column: span 2;">
+                     <div class="countdown-timer">
+                        <i class="fa fa-hourglass-half"></i> <?= $stream->getCountdown() ?>
+                     </div>
+                 </div>
+                 <?php if ($stream->scheduled_start): ?>
+                 <div class="meta-item" style="grid-column: span 2;">
+                    <small><?= Yii::$app->formatter->asDatetime($stream->scheduled_start, 'medium') ?></small>
+                 </div>
+                 <?php endif; ?>
+            <?php else: /* Ended */ ?>
+                <div class="meta-item" style="grid-column: span 2;">
+                    Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
+                </div>
+                <div class="meta-item">
+                    <i class="fa fa-clock-o"></i> <?= $stream->getDuration() ?>
+                </div>
+                <div class="meta-item">
+                    <i class="fa fa-users"></i> <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
+                </div>
+                 <!-- Avatars -->
+                <?php $participants = $stream->getRecentParticipants(5); ?>
+                <?php if (!empty($participants)): ?>
+                    <div class="avatar-stack" style="margin-left: 2px;">
+                        <?php foreach ($participants as $p): ?>
+                            <div class="avatar-stack-item" title="<?= Html::encode($p['name']) ?>">
+                                <?php if ($p['user']): ?>
+                                    <?= Image::widget(['user' => $p['user'], 'width' => 24, 'link' => true]) ?>
+                                <?php else: ?>
+                                    <img src="<?= Yii::$app->view->theme->baseUrl ?>/img/default_user.jpg" alt="<?= Html::encode($p['name']) ?>">
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
-        
-        <div style="text-align: center; margin-top: 10px;">
+    </div>
+
+    <!-- Aggregated Reactions -->
+    <?php $reactions = $stream->getAggregatedReactions(); ?>
+    <?php if (!empty($reactions)): ?>
+        <div class="reactions-bar" style="padding: 0 15px 10px; display: flex; gap: 5px; flex-wrap: wrap;">
             <?php 
+            $count = 0;
+            foreach ($reactions as $emoji => $rCount): 
+                if ($count >= 5) break; 
+            ?>
+                <span class="badge" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 11px; padding: 2px 6px;">
+                    <?= $emoji ?> <?= $rCount ?>
+                </span>
+            <?php 
+                $count++;
+            endforeach; 
+            ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- FOOTER: Action Button -->
+    <div class="col-footer">
+        <?php if ($isLive): ?>
+            <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
+               class="card-action-btn live" target="_blank">
+               <i class="fa fa-video-camera"></i> JOIN LIVE STREAM
+            </a>
+            <?php if (!empty($stream->ytstream_url)): ?>
+                <a href="<?= Html::encode($stream->ytstream_url) ?>" target="_blank" class="card-action-btn view" style="text-align: center; font-size: 11px; padding: 5px;">
+                    <i class="fa fa-youtube-play" style="color: red;"></i> Watch on YouTube
+                </a>
+            <?php endif; ?>
+
+        <?php elseif ($isScheduled): ?>
+            <?php 
+            // Calendar Attendance Logic
             if (!empty($stream->calendar_entry_id) && $stream->calendarEntry) {
                 $calendarEntry = $stream->calendarEntry;
-                $container = $calendarEntry->content->container;
-                
-                // Check if user is attending (State 2 = Accepted usually, we accept anything > 0 as "responded" or checks specific state)
-                // Using Query Builder for safety (assuming table exists)
                 $isAttending = (new \yii\db\Query())
                     ->from('calendar_entry_participant')
                     ->where(['calendar_entry_id' => $calendarEntry->id, 'user_id' => Yii::$app->user->id])
@@ -121,147 +233,59 @@ if ($isEnded) {
 
                 $isCreator = ($stream->creator_id == Yii::$app->user->id);
 
-                // Check Space membership
-                $isSpaceEvent = ($container instanceof \humhub\modules\space\models\Space);
-                $isMember = true;
-                if ($isSpaceEvent && !Yii::$app->user->isGuest) {
-                    $isMember = $container->isMember(Yii::$app->user->id);
-                }
-
-                if ($isSpaceEvent && !$isMember) {
-                     // Show Join Space Button if not a member
-                     echo \humhub\libs\Html::a('<i class="fa fa-users"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Join Space'), $container->getUrl(), [
-                        'class' => 'btn btn-info btn-sm',
-                        'style' => 'width: 100%; font-size: 11px; white-space: normal;',
-                        'target' => '_blank',
-                     ]);
-                } elseif ($isAttending || $isCreator) {
-                     // Show View Event Button - Use custom modal
-                     $viewEventUrl = Url::to(['/jitsi-meet-cloud-8x8/room/view-event', 'id' => $stream->id]);
-                     
-                     echo \humhub\widgets\ModalButton::defaultType('<i class="fa fa-calendar"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'View Event'))
-                        ->load($viewEventUrl)
-                        ->cssClass('btn btn-default btn-sm')
-                        ->options(['style' => 'width: 100%; font-size: 11px; white-space: normal; color: #333; background-color: #fff; border: 1px solid #ccc;']);
+                if ($isAttending || $isCreator) {
+                     // VIEW EVENT
+                     echo ModalButton::defaultType('VIEW EVENT')
+                        ->load(Url::to(['/jitsi-meet-cloud-8x8/room/view-event', 'id' => $stream->id]))
+                        ->cssClass('card-action-btn view');
                 } else {
-                    // Show Attend Button - Use custom RSVP endpoint
-                    $attendUrl = Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED]);
-                    
-                    echo \humhub\libs\Html::a('<i class="fa fa-check"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Attend'), $attendUrl, [
-                        'class' => 'btn btn-primary btn-sm',
-                        'style' => 'width: 100%; font-size: 11px; white-space: normal;',
-                        'data-method' => 'post',
-                    ]);
+                    // ATTEND
+                    echo Html::a('<i class="fa fa-check-circle"></i> ATTEND', 
+                        Url::to(['/jitsi-meet-cloud-8x8/room/attend', 'id' => $stream->id, 'type' => \humhub\modules\calendar\models\CalendarEntryParticipant::PARTICIPATION_STATE_ACCEPTED]), 
+                        ['class' => 'card-action-btn attend', 'data-method' => 'post']);
                 }
             } else {
-                // Fallback for streams without calendar entry
-                 ?>
+                // Fallback Join
+                ?>
                 <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" 
-                   class="btn btn-primary btn-sm" target="_blank" style="width: 100%; font-size: 11px; white-space: normal;">
-                    <i class="fa fa-video-camera"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'JOIN ROOM') ?>
+                   class="card-action-btn attend" target="_blank">
+                   JOIN ROOM
                 </a>
                 <?php
             }
             ?>
-        </div>
-    </div>
 
-<?php elseif ($isLive): ?>
-    <!-- Live Card -->
-    <div class="stream-card live">
-        <div class="stream-badge">
-            <span class="pulsating-dot"></span> LIVE
-        </div>
-        
-        <?php if (!empty($stream->ytstream_url)): ?>
-        <a href="<?= Html::encode($stream->ytstream_url) ?>" target="_blank" class="live-yt-icon" style="position: absolute; top: 10px; right: 10px; font-size: 20px; color: #ff0000;" title="Watch on YouTube">
-            <i class="fa fa-youtube-play"></i>
-        </a>
-        <?php endif; ?>
-        
-        <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
-            <?php if ($stream->creator): ?>
-                <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
-                    <?= Image::widget(['user' => $stream->creator, 'width' => 20, 'link' => false]) ?>
-                    <span style="margin-left: 5px;"><?= Html::encode($stream->creator->displayName) ?></span>
-                </a>
+        <?php else: /* Ended */ ?>
+            <?php if ($showDownloadButton): ?>
+                <?php if ($isExpired): ?>
+                     <?= ModalButton::defaultType('<i class="fa fa-eye"></i> VIEW DETAILS')
+                        ->load(Url::to(['details', 'id' => $stream->id]))
+                        ->cssClass('card-action-btn view')
+                        ->options(['title' => Yii::t('JitsiMeetCloud8x8Module.base', '24-hour download period has expired, but session data is available')])
+                    ?>
+                <?php else: ?>
+                    <?= ModalButton::defaultType('<i class="fa fa-download"></i> DOWNLOAD FILES')
+                        ->load(Url::to(['details', 'id' => $stream->id]))
+                        ->cssClass('card-action-btn view')
+                    ?>
+                <?php endif; ?>
             <?php else: ?>
-                The Oil Press
+                <div class="card-action-btn view" style="opacity: 0.5; cursor: default;">
+                    <i class="fa fa-ban"></i> No Files Available
+                </div>
             <?php endif; ?>
-        </div>
-        
-        <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->getTitle()) ?>">
-            <?= Html::encode($stream->getTitle()) ?>
-        </div>
-        <div class="stream-room-name-sub">
-            Room name: <?= Html::encode($stream->room_name) ?>
-        </div>
-        <div class="stream-info">
-            <br>
-            Started: <?= Yii::$app->formatter->asTime($stream->start_time) ?>
-            <br>
-            Connected Users: <?= $stream->active_count > 0 ? $stream->active_count : 0 ?>
-        </div>
-        
-        <a href="<?= Url::to(['/jitsi-meet-cloud-8x8/room/open', 'name' => $stream->room_name]) ?>" class="btn btn-default btn-stream-live" target="_blank">
-            JOIN LIVE STREAM
-        </a>
-    </div>
 
-<?php else: ?>
-    <!-- Ended Card -->
-    <div class="stream-card ended">
-        <div class="stream-badge">ENDED LIVE</div>
-        
-        <div class="stream-creator" style="font-size: 12px; margin-bottom: 5px; color: #ccc;">
-            <?php if ($stream->creator): ?>
-                <a href="<?= $stream->creator->getUrl() ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center;">
-                    <?= Image::widget(['user' => $stream->creator, 'width' => 20, 'link' => false]) ?>
-                    <span style="margin-left: 5px;"><?= Html::encode($stream->creator->displayName) ?></span>
-                </a>
-            <?php else: ?>
-                The Oil Press
-            <?php endif; ?>
-        </div>
-
-        <div class="stream-title stream-title-overflow" title="<?= Html::encode($stream->getTitle()) ?>">
-            <?= Html::encode($stream->getTitle()) ?>
-        </div>
-        <div class="stream-room-name-sub">
-            Room name: <?= Html::encode($stream->room_name) ?>
-        </div>
-
-        <div class="stream-info">
-            Ended: <?= Yii::$app->formatter->asDatetime($stream->end_time, 'medium') ?>
-            <br>
-            Duration: <?= $stream->getDuration() ?>
-            <br>
-            Total Participants: <?= $stream->participant_count > 0 ? $stream->participant_count : 0 ?>
-        </div>
-        
-        <div class="stream-indicators">
-            <?php if (!empty($stream->ytstream_url)): ?>
-                <i class="fa fa-youtube-play indicator-icon active" title="YouTube Live Stream" style="color: #ff0000 !important;"></i>
-            <?php endif; ?>
-            
-            <i class="fa fa-video-camera indicator-icon <?= $hasRecording ? 'active' : '' ?>" title="Video Recording"></i>
-            <i class="fa fa-film indicator-icon <?= $hasHighlights ? 'active' : '' ?>" title="Highlights"></i>
-            <i class="fa fa-comments indicator-icon <?= $hasChat ? 'active' : '' ?>" title="Chat Log"></i>
-            <i class="fa fa-bar-chart indicator-icon <?= $hasSessionData ? 'active' : '' ?>" title="Session Data"></i>
-            <i class="fa fa-file-text-o indicator-icon <?= $hasTranscript ? 'active' : '' ?>" title="Transcript"></i>
-        </div>
-        
-        <?php if ($showDownloadButton): ?>
-        <?= ModalButton::primary('DOWNLOAD FILES')
-            ->load(Url::to(['details', 'id' => $stream->id]))
-            ->cssClass('btn btn-default btn-stream-replay')
-            ->options([
-                'style' => 'font-size: 10px; padding: 6px 10px; white-space: normal; line-height: 1.2;',
-            ]) 
-        ?>
-        <?php else: ?>
-        <div style="height: 32px;"></div>
+            <!-- Indicators Row -->
+            <div class="download-bar">
+                <?php if (!empty($stream->ytstream_url)): ?>
+                    <i class="fa fa-youtube-play icon-indicator active" style="color: red;" title="YouTube"></i>
+                <?php endif; ?>
+                <i class="fa fa-video-camera icon-indicator <?= ($hasRecording) ? 'active' : '' ?>" title="Recording"></i>
+                <i class="fa fa-film icon-indicator <?= ($hasHighlights) ? 'active' : '' ?>" title="Highlights"></i>
+                <i class="fa fa-comments icon-indicator <?= ($hasChat) ? 'active' : '' ?>" title="Chat"></i>
+                <i class="fa fa-bar-chart icon-indicator <?= ($hasSessionData) ? 'active' : '' ?>" title="Stats"></i>
+                <i class="fa fa-file-text-o icon-indicator <?= ($hasTranscript) ? 'active' : '' ?>" title="Transcript"></i>
+            </div>
         <?php endif; ?>
     </div>
-<?php endif; ?>
-
+</div>

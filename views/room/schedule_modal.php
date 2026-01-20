@@ -5,6 +5,8 @@ use humhub\widgets\Button;
 use yii\bootstrap\ActiveForm;
 use yii\helpers\Url;
 use humhub\widgets\ModalDialog;
+use humhub\modules\content\widgets\richtext\RichTextField;
+use humhub\modules\topic\widgets\TopicPicker;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream */
 
@@ -65,7 +67,7 @@ $title = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Edit Stream') : Yii::
 $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Changes') : Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream');
 ?>
 
-<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . $title]); ?>
+<?php ModalDialog::begin(['header' => '<i class="fa fa-calendar-plus-o"></i> ' . $title, 'class' => 'jitsi-schedule-modal']); ?>
 
 <?php $form = ActiveForm::begin([
     'id' => 'schedule-stream-form',
@@ -90,10 +92,107 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
         'maxlength' => 255
     ])->label(Yii::t('JitsiMeetCloud8x8Module.base', 'Stream Title')) ?>
 
-    <?= $form->field($model, 'description')->textarea([
-        'rows' => 3,
-        'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Optional description for the event')
+    <?= $form->field($model, 'description')->widget(RichTextField::class, [
+        'placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Optional description for the event'),
+        'layout' => \humhub\modules\content\widgets\richtext\RichTextFieldLayout::class,
     ]) ?>
+    <div id="desc-word-count" class="text-right text-muted" style="margin-top: -10px; margin-bottom: 10px; font-size: 12px;">
+        <span id="current-words">0</span> / 200 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'words') ?>
+    </div>
+
+    <script>
+        $(function() {
+            var maxWords = 200;
+            var $countSpan = $('#current-words');
+            var $countDiv = $('#desc-word-count');
+            var pollingInterval;
+
+            function countWords(str) {
+                if (!str) return 0;
+                // Remove HTML tags for counting validity
+                var text = str.replace(/<[^>]*>/g, ' ');
+                // Replace encoded entities
+                text = text.replace(/&nbsp;|&#160;/gi, ' ');
+                // Clean whitespace and count
+                text = text.trim();
+                return text.length === 0 ? 0 : text.split(/\s+/).length;
+            }
+
+            function updateWordCount() {
+                // Try finding the rich text editor div
+                // HumHub 1.16+ usually uses .ProseMirror
+                var $modal = $('.jitsi-schedule-modal');
+                var $editor = $modal.find('.ProseMirror');
+                
+                // Fallback 1: specific contenteditable
+                if (!$editor.length) {
+                    $editor = $modal.find('[contenteditable="true"]');
+                }
+                
+                // Fallback 2: The hidden input value (if synced)
+                var text = '';
+                if ($editor.length) {
+                    text = $editor[0].innerText || $editor.text();
+                } else {
+                    // Try getting value from the original textarea matching the model attribute
+                    var $input = $modal.find('#jitsilivestream-description');
+                    if ($input.length) {
+                        text = $input.val();
+                    }
+                }
+
+                var count = countWords(text);
+                $countSpan.text(count);
+
+                var $btn = $modal.find('.modal-footer .btn-primary');
+                
+                if (count > maxWords) {
+                    $countDiv.css('color', 'red').css('font-weight', 'bold');
+                    // Disable save button
+                    $btn.prop('disabled', true);
+                    $btn.addClass('disabled');
+                    $btn.attr('title', 'Description exceeds word limit');
+                } else {
+                    $countDiv.css('color', '').css('font-weight', '');
+                    $btn.prop('disabled', false);
+                    $btn.removeClass('disabled');
+                    $btn.attr('title', '');
+                }
+            }
+            
+            // Monitor events on editor and any inputs in the modal
+            $('body').on('keyup input paste propertychange', '.jitsi-schedule-modal [contenteditable="true"], .jitsi-schedule-modal textarea, .jitsi-schedule-modal input', function() {
+                updateWordCount();
+            });
+            
+            // Polling to ensure we catch pastes or async loads
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(updateWordCount, 1000);
+            
+            // Clean up interval when modal closes
+            $('.modal').on('hidden.bs.modal', function () {
+                clearInterval(pollingInterval);
+            });
+            
+            // Run immediately
+            updateWordCount();
+        });
+    </script>
+
+    <?php if (!empty($types)): ?>
+    <div class="form-group">
+        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Event Type') ?></label>
+        <?= Html::dropDownList('type_id', null, $types, ['class' => 'form-control', 'prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Select event type...')]) ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="form-group">
+        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Topics') ?></label>
+        <?= TopicPicker::widget([
+            'name' => 'topics',
+            'options' => ['placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Select topic...')],
+        ]) ?>
+    </div>
 
     <div class="row">
         <div class="col-md-6">
