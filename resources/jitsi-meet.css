@@ -84,8 +84,19 @@ body.dark-mode,
     }
 
     .jitsi-actions {
-        justify-content: center;
+        /* Stack buttons vertically on mobile for better touch targets */
+        flex-direction: column;
+        display: flex;
+        /* Ensure flex behavior */
         width: 100%;
+        margin-top: 15px;
+        /* Separation from filters */
+        gap: 10px;
+    }
+
+    .jitsi-action-btn {
+        width: 100%;
+        justify-content: center;
     }
 
     .jitsi-filter-btn {
