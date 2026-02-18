@@ -108,6 +108,14 @@ $creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press
         </div>
     </div>
 
+    <?php if ($stream->space): ?>
+    <div class="stream-space-badge" style="padding: 0 15px 5px; font-size: 11px;">
+        <a href="<?= $stream->space->createUrl('/space/space') ?>" style="color: #aaa; text-decoration: none;">
+            <i class="fa fa-users" style="margin-right: 3px;"></i><?= Html::encode($stream->space->displayName) ?>
+        </a>
+    </div>
+    <?php endif; ?>
+
     <!-- BODY: Title & Meta -->
     <div class="col-body">
         <div class="stream-title-v2" title="<?= Html::encode($stream->getTitle()) ?>">

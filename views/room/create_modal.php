@@ -6,12 +6,26 @@ use yii\bootstrap\ActiveForm;
 use humhub\libs\Html;
 
 /* @var $model \humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm */
+/* @var $containers array GUID => Label */
+/* @var $defaultContainerGuid string|null */
 ?>
 
 <?php ModalDialog::begin(['header' => Yii::t('JitsiMeetCloud8x8Module.base', 'Create Live Stream'), 'size' => 'small', 'class' => 'jitsi-modal-overrides']) ?>
     <?php $form = ActiveForm::begin(['id' => 'create-stream-form', 'action' => ['index']]); ?>
         <div class="modal-body">
             <p><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Enter a name for your live stream room.') ?></p>
+
+            <?php if (!empty($containers) && count($containers) > 1): ?>
+            <div class="form-group">
+                <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Stream on') ?></label>
+                <?= $form->field($model, 'targetContainer')->dropDownList($containers, [
+                    'class' => 'form-control',
+                    'options' => [$defaultContainerGuid => ['selected' => true]],
+                ])->label(false) ?>
+            </div>
+            <?php elseif (!empty($containers)): ?>
+                <?= Html::activeHiddenInput($model, 'targetContainer', ['value' => $defaultContainerGuid]) ?>
+            <?php endif; ?>
             
             <?= $form->field($model, 'room')->textInput(['placeholder' => Yii::t('JitsiMeetCloud8x8Module.base', 'Stream Name')])->label(false) ?>
             

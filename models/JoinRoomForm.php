@@ -16,10 +16,15 @@ class JoinRoomForm extends \yii\base\Model
      */
     public $lobbyEnabled = false;
 
+    /**
+     * @var string|null Selected content container GUID (space or profile)
+     */
+    public $targetContainer;
+
     public function rules()
     {
         return [
-            [['room'], 'string'],
+            [['room', 'targetContainer'], 'string'],
             [['newWindow', 'lobbyEnabled'], 'boolean'],
         ];
     }

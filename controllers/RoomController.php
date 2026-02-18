@@ -43,7 +43,48 @@ class RoomController extends Controller
     public function actionCreate()
     {
         $model = new JoinRoomForm();
-        return $this->renderAjax('create_modal', ['model' => $model]);
+
+        // Prepare Space/Profile targets (same pattern as actionSchedule)
+        $user = Yii::$app->user->getIdentity();
+        $containers = [];
+        $defaultContainerGuid = null;
+        $highestActivity = 0;
+
+        if ($user) {
+            $profileGuid = $user->contentContainerRecord->guid;
+            $containers[$profileGuid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Your Profile');
+            $defaultContainerGuid = $profileGuid;
+
+            // Fetch member spaces
+            $memberships = Membership::findAll(['user_id' => $user->id]);
+            foreach ($memberships as $membership) {
+                if ($membership->space) {
+                    $space = $membership->space;
+                    if ($space->visibility === Space::VISIBILITY_NONE) {
+                        continue;
+                    }
+                    $containers[$space->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $space->displayName]);
+
+                    // Track most active space (by member count as proxy)
+                    $memberCount = $space->getMemberships()->count();
+                    if ($memberCount > $highestActivity) {
+                        $highestActivity = $memberCount;
+                        $defaultContainerGuid = $space->contentContainerRecord->guid;
+                    }
+                }
+            }
+
+            // If only one option (profile only), default to profile
+            if (count($containers) <= 1) {
+                $defaultContainerGuid = $profileGuid;
+            }
+        }
+
+        return $this->renderAjax('create_modal', [
+            'model' => $model,
+            'containers' => $containers,
+            'defaultContainerGuid' => $defaultContainerGuid,
+        ]);
     }
 
     public function actionIndex()
@@ -63,25 +104,55 @@ class RoomController extends Controller
                 Yii::$app->cache->set($lobbyKey, true, 3600);
             }
 
+            // Cache Space ID for Webhook to pick up
+            if (!empty($model->targetContainer)) {
+                $container = ContentContainer::findRecord($model->targetContainer);
+                if ($container instanceof Space) {
+                    $spaceKey = 'jitsiMeetCloud8x8:roomSpaceId:' . strtolower($fixedName);
+                    Yii::$app->cache->set($spaceKey, $container->id, 3600);
+                }
+            }
+
             return $this->redirect(['open', 'name' => $fixedName]);
         }
 
         $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;
+
+        // Read filter parameters
+        $filterSpaceId = Yii::$app->request->get('space_id');
+        $filterCreatorId = Yii::$app->request->get('creator_id');
+
+        // Build space condition for filtering
+        $spaceCondition = [];
+        if ($filterSpaceId === 'profile') {
+            $spaceCondition = ['space_id' => null];
+        } elseif (!empty($filterSpaceId)) {
+            $spaceCondition = ['space_id' => (int)$filterSpaceId];
+        }
+
+        $creatorCondition = [];
+        if (!empty($filterCreatorId)) {
+            $creatorCondition = ['creator_id' => (int)$filterCreatorId];
+        }
         
         // Get scheduled streams (upcoming)
         $scheduledStreams = [];
         if ($this->module->isSchedulingEnabled()) {
-            $scheduledStreams = JitsiLiveStream::find()
+            $q = JitsiLiveStream::find()
                 ->where(['status' => JitsiLiveStream::STATUS_SCHEDULED])
-                ->orderBy(['scheduled_start' => SORT_ASC])
-                ->all();
+                ->andFilterWhere($spaceCondition)
+                ->andFilterWhere($creatorCondition)
+                ->orderBy(['scheduled_start' => SORT_ASC]);
+            $scheduledStreams = $q->all();
         }
         
         // Get active/live streams
-        $allLiveStreams = JitsiLiveStream::find()
+        $liveQuery = JitsiLiveStream::find()
             ->where(['status' => JitsiLiveStream::STATUS_LIVE])
-            ->orderBy(['start_time' => SORT_DESC])
-            ->all();
+            ->andFilterWhere($spaceCondition)
+            ->andFilterWhere($creatorCondition)
+            ->orderBy(['start_time' => SORT_DESC]);
+        $allLiveStreams = $liveQuery->all();
             
         $activeStreams = [];
         
@@ -115,7 +186,10 @@ class RoomController extends Controller
         $activeCount = count($activeStreams) + count($scheduledStreams);
         
         // For ended streams, adjust limit on page 1
-        $query = JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED]);
+        $query = JitsiLiveStream::find()
+            ->where(['status' => JitsiLiveStream::STATUS_ENDED])
+            ->andFilterWhere($spaceCondition)
+            ->andFilterWhere($creatorCondition);
         $countQuery = clone $query;
         $totalEnded = $countQuery->count();
         
@@ -128,6 +202,20 @@ class RoomController extends Controller
         
         // Check if user can schedule
         $canSchedule = $this->module->isSchedulingEnabled() && Yii::$app->user->can(CanSchedule::class);
+
+        // Build space list for filter dropdown
+        $spaceFilterList = [];
+        if (!Yii::$app->user->isGuest) {
+            $userSpaces = Membership::find()
+                ->where(['user_id' => Yii::$app->user->id])
+                ->joinWith('space')
+                ->all();
+            foreach ($userSpaces as $m) {
+                if ($m->space && $m->space->visibility !== Space::VISIBILITY_NONE) {
+                    $spaceFilterList[$m->space->id] = $m->space->displayName;
+                }
+            }
+        }
         
         return $this->render('index', [
             'model' => $model,
@@ -140,6 +228,9 @@ class RoomController extends Controller
                 ->all(),
             'pages' => $pages,
             'canSchedule' => $canSchedule,
+            'spaceFilterList' => $spaceFilterList,
+            'filterSpaceId' => $filterSpaceId,
+            'filterCreatorId' => $filterCreatorId,
         ]);
     }
 
