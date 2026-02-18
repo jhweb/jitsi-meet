@@ -205,7 +205,6 @@ class RoomController extends Controller
 
         if ($model->load(Yii::$app->request->post())) {
             // Validate Word Count (500 words)
-            // Validate Word Count (500 words)
             // Use stricter whitespace splitting for count
             $rawDesc = $model->description;
             // Decode entities to treat &nbsp; as space
@@ -288,20 +287,16 @@ class RoomController extends Controller
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
                         
-                        // Set Event Type
-                        $typeId = Yii::$app->request->post('type_id');
-                        if ($typeId) {
-                            $calendarEntry->type_id = $typeId;
-                        }
-                        
-                        // Enable participation and ensure it's published mechanism
-                        $calendarEntry->participant_info = 1; 
-                        $calendarEntry->participation_mode = 2; // CalendarEntry::PARTICIPATION_MODE_ALL (Hardcoded to prevent undefined constant in older versions)
-                        
                         // Force Published State (1)
                         $calendarEntry->content->state = 1; // Content::STATE_PUBLISHED 
                         
                         if ($calendarEntry->save()) {
+                            // Set Event Type (Must be done after save/content creation)
+                            $typeId = Yii::$app->request->post('type_id');
+                            if ($typeId) {
+                                $calendarEntry->setType($typeId);
+                            }
+
                             $model->calendar_entry_id = $calendarEntry->id;
                             $model->save();
                             
