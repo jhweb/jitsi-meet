@@ -241,6 +241,18 @@ class RoomController extends Controller
                 $model->scheduled_end = $start->modify('+1 hour')->format('Y-m-d H:i:s');
             }
 
+            // Convert Timezones BEFORE saving model (Fix Timezone Discrepancy)
+            $selectedTz = new \DateTimeZone($model->timezone);
+            $appTz = new \DateTimeZone(Yii::$app->timeZone);
+
+            $startDt = new \DateTime($model->scheduled_start, $selectedTz);
+            $startDt->setTimezone($appTz);
+            $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
+
+            $endDt = new \DateTime($model->scheduled_end, $selectedTz);
+            $endDt->setTimezone($appTz);
+            $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
+
             if ($model->save()) {
                 
                 // Phase 2: Deep Calendar Integration - Auto-create Calendar Entry
@@ -279,18 +291,9 @@ class RoomController extends Controller
                         $isPublic = Yii::$app->request->post('is_public');
                         $calendarEntry->content->visibility = $isPublic ? Content::VISIBILITY_PUBLIC : Content::VISIBILITY_PRIVATE;
 
-                        // Convert datetime-local format (2026-01-08T10:30) using the Selected Timezone
-                        $selectedTz = new \DateTimeZone($model->timezone);
-                        $appTz = new \DateTimeZone(Yii::$app->timeZone);
-
-                        $startDt = new \DateTime($model->scheduled_start, $selectedTz);
-                        $startDt->setTimezone($appTz);
-                        
-                        $endDt = new \DateTime($model->scheduled_end, $selectedTz);
-                        $endDt->setTimezone($appTz);
-                        
-                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
-                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
+                        // Use already converted values
+                        $calendarEntry->start_datetime = $model->scheduled_start;
+                        $calendarEntry->end_datetime = $model->scheduled_end;
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
                         
