@@ -45,6 +45,52 @@ $filter = Yii::$app->request->get('filter', 'all');
             </a>
         </div>
 
+        <?php if (!empty($spaceFilterList) || !Yii::$app->user->isGuest): ?>
+        <div class="jitsi-dropdown-filters">
+            <?php if (!empty($spaceFilterList)): ?>
+            <select id="jitsi-space-filter" class="jitsi-dropdown-select">
+                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Spaces') ?></option>
+                <option value="profile" <?= $filterSpaceId === 'profile' ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Profile Only') ?></option>
+                <?php foreach ($spaceFilterList as $spId => $spName): ?>
+                    <option value="<?= $spId ?>" <?= $filterSpaceId == $spId ? 'selected' : '' ?>><?= Html::encode($spName) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <?php endif; ?>
+            <select id="jitsi-member-filter" class="jitsi-dropdown-select">
+                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Members') ?></option>
+                <?php if (!Yii::$app->user->isGuest): ?>
+                    <option value="<?= Yii::$app->user->id ?>" <?= $filterCreatorId == Yii::$app->user->id ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'My Streams') ?></option>
+                <?php endif; ?>
+            </select>
+            <?php if (!empty($filterSpaceId) || !empty($filterCreatorId)): ?>
+                <a href="<?= Url::to(['index', 'filter' => $filter]) ?>" class="jitsi-clear-filters-btn">
+                    <i class="fa fa-times"></i>
+                </a>
+            <?php endif; ?>
+        </div>
+        <script <?= Html::nonce() ?>>
+            (function() {
+                function applyFilters() {
+                    var spaceId = document.getElementById('jitsi-space-filter') ? document.getElementById('jitsi-space-filter').value : '';
+                    var creatorId = document.getElementById('jitsi-member-filter') ? document.getElementById('jitsi-member-filter').value : '';
+                    var params = new URLSearchParams(window.location.search);
+                    
+                    if (spaceId) { params.set('space_id', spaceId); } else { params.delete('space_id'); }
+                    if (creatorId) { params.set('creator_id', creatorId); } else { params.delete('creator_id'); }
+                    params.set('filter', '<?= Html::encode($filter) ?>');
+                    params.delete('page');
+                    
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                }
+                
+                var spaceSelect = document.getElementById('jitsi-space-filter');
+                var memberSelect = document.getElementById('jitsi-member-filter');
+                if (spaceSelect) spaceSelect.addEventListener('change', applyFilters);
+                if (memberSelect) memberSelect.addEventListener('change', applyFilters);
+            })();
+        </script>
+        <?php endif; ?>
+
         <div class="jitsi-actions">
             <?php if ($canSchedule): ?>
                 <?= ModalButton::primary('<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
@@ -57,60 +103,6 @@ $filter = Yii::$app->request->get('filter', 'all');
                 ->cssClass('jitsi-action-btn jitsi-btn-create') ?>
         </div>
     </div>
-
-    <!-- Space & Member Filter Bar -->
-    <?php if (!empty($spaceFilterList) || !Yii::$app->user->isGuest): ?>
-    <div class="jitsi-secondary-filters" style="display: flex; gap: 10px; padding: 8px 0; flex-wrap: wrap; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 5px;">
-            <i class="fa fa-filter" style="color: #888; font-size: 12px;"></i>
-        </div>
-        <?php if (!empty($spaceFilterList)): ?>
-        <div>
-            <select id="jitsi-space-filter" class="form-control input-sm" style="min-width: 150px; font-size: 12px;">
-                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Spaces') ?></option>
-                <option value="profile" <?= $filterSpaceId === 'profile' ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Profile Only') ?></option>
-                <?php foreach ($spaceFilterList as $spId => $spName): ?>
-                    <option value="<?= $spId ?>" <?= $filterSpaceId == $spId ? 'selected' : '' ?>><?= Html::encode($spName) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <?php endif; ?>
-        <div>
-            <select id="jitsi-member-filter" class="form-control input-sm" style="min-width: 150px; font-size: 12px;">
-                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Members') ?></option>
-                <?php if (!Yii::$app->user->isGuest): ?>
-                    <option value="<?= Yii::$app->user->id ?>" <?= $filterCreatorId == Yii::$app->user->id ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'My Streams') ?></option>
-                <?php endif; ?>
-            </select>
-        </div>
-        <?php if (!empty($filterSpaceId) || !empty($filterCreatorId)): ?>
-            <a href="<?= Url::to(['index', 'filter' => $filter]) ?>" class="btn btn-xs btn-default" style="font-size: 11px;">
-                <i class="fa fa-times"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Clear Filters') ?>
-            </a>
-        <?php endif; ?>
-    </div>
-    <script <?= Html::nonce() ?>>
-        (function() {
-            function applyFilters() {
-                var spaceId = document.getElementById('jitsi-space-filter') ? document.getElementById('jitsi-space-filter').value : '';
-                var creatorId = document.getElementById('jitsi-member-filter') ? document.getElementById('jitsi-member-filter').value : '';
-                var params = new URLSearchParams(window.location.search);
-                
-                if (spaceId) { params.set('space_id', spaceId); } else { params.delete('space_id'); }
-                if (creatorId) { params.set('creator_id', creatorId); } else { params.delete('creator_id'); }
-                params.set('filter', '<?= Html::encode($filter) ?>');
-                params.delete('page'); // Reset pagination on filter change
-                
-                window.location.href = window.location.pathname + '?' + params.toString();
-            }
-            
-            var spaceSelect = document.getElementById('jitsi-space-filter');
-            var memberSelect = document.getElementById('jitsi-member-filter');
-            if (spaceSelect) spaceSelect.addEventListener('change', applyFilters);
-            if (memberSelect) memberSelect.addEventListener('change', applyFilters);
-        })();
-    </script>
-    <?php endif; ?>
 
     <!-- Stats / Info (Optional, skipping for now based on mockup) -->
 
