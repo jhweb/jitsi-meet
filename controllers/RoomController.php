@@ -332,22 +332,21 @@ class RoomController extends Controller
                 $model->scheduled_end = $start->modify('+1 hour')->format('Y-m-d H:i:s');
             }
 
-            // Convert from creator's profile timezone to UTC for storage.
-            // The datetime-local input value is in the user's local (profile) timezone.
-            // All times are stored in UTC; Yii::$app->formatter->asDatetime() converts
-            // back to each viewer's own profile timezone for display automatically.
+            // Convert from creator's profile timezone to app timezone for storage.
+            // HumHub sets formatter->defaultTimeZone = Yii::$app->timeZone, so stored
+            // dates must be in the app timezone for correct display conversion.
             $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
-            $utcTz  = new \DateTimeZone('UTC');
+            $appTz  = new \DateTimeZone(Yii::$app->timeZone);
 
             // Store the creator's timezone for reference / calendar entries
             $model->timezone = Yii::$app->formatter->timeZone;
 
             $startDt = new \DateTime($model->scheduled_start, $userTz);
-            $startDt->setTimezone($utcTz);
+            $startDt->setTimezone($appTz);
             $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
 
             $endDt = new \DateTime($model->scheduled_end, $userTz);
-            $endDt->setTimezone($utcTz);
+            $endDt->setTimezone($appTz);
             $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
 
             if ($model->save()) {
@@ -1175,20 +1174,20 @@ class RoomController extends Controller
         }
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            // Convert from creator's profile timezone to UTC — same logic as actionSchedule.
-            // The datetime-local input value is in the user's local (profile) timezone.
+            // Convert from creator's profile timezone to app timezone — same logic as actionSchedule.
+            // HumHub stores dates in Yii::$app->timeZone (server timezone).
             $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
-            $utcTz  = new \DateTimeZone('UTC');
+            $appTz  = new \DateTimeZone(Yii::$app->timeZone);
 
             // Store the updated timezone identifier on the model
             $model->timezone = Yii::$app->formatter->timeZone;
 
             $startDt = new \DateTime($model->scheduled_start, $userTz);
-            $startDt->setTimezone($utcTz);
+            $startDt->setTimezone($appTz);
             $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
 
             $endDt = new \DateTime($model->scheduled_end, $userTz);
-            $endDt->setTimezone($utcTz);
+            $endDt->setTimezone($appTz);
             $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
 
             if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
