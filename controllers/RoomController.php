@@ -332,16 +332,22 @@ class RoomController extends Controller
                 $model->scheduled_end = $start->modify('+1 hour')->format('Y-m-d H:i:s');
             }
 
-            // Convert Timezones BEFORE saving model (Fix Timezone Discrepancy)
-            $selectedTz = new \DateTimeZone($model->timezone);
-            $appTz = new \DateTimeZone(Yii::$app->timeZone);
+            // Convert from creator's profile timezone to UTC for storage.
+            // The datetime-local input value is in the user's local (profile) timezone.
+            // All times are stored in UTC; Yii::$app->formatter->asDatetime() converts
+            // back to each viewer's own profile timezone for display automatically.
+            $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
+            $utcTz  = new \DateTimeZone('UTC');
 
-            $startDt = new \DateTime($model->scheduled_start, $selectedTz);
-            $startDt->setTimezone($appTz);
+            // Store the creator's timezone for reference / calendar entries
+            $model->timezone = Yii::$app->formatter->timeZone;
+
+            $startDt = new \DateTime($model->scheduled_start, $userTz);
+            $startDt->setTimezone($utcTz);
             $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
 
-            $endDt = new \DateTime($model->scheduled_end, $selectedTz);
-            $endDt->setTimezone($appTz);
+            $endDt = new \DateTime($model->scheduled_end, $userTz);
+            $endDt->setTimezone($utcTz);
             $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
 
             if ($model->save()) {
@@ -1169,31 +1175,44 @@ class RoomController extends Controller
         }
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-             if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
-                 $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'End time must be after start time'));
-            } else {
-                 $model->start_time = (new \DateTime($model->scheduled_start))->format('Y-m-d H:i:s');
-                 $model->end_time = (new \DateTime($model->scheduled_end))->format('Y-m-d H:i:s');
+            // Convert from creator's profile timezone to UTC — same logic as actionSchedule.
+            // The datetime-local input value is in the user's local (profile) timezone.
+            $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
+            $utcTz  = new \DateTimeZone('UTC');
 
-                 if ($model->save()) {
-                    // Update Calendar Entry
+            // Store the updated timezone identifier on the model
+            $model->timezone = Yii::$app->formatter->timeZone;
+
+            $startDt = new \DateTime($model->scheduled_start, $userTz);
+            $startDt->setTimezone($utcTz);
+            $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
+
+            $endDt = new \DateTime($model->scheduled_end, $userTz);
+            $endDt->setTimezone($utcTz);
+            $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
+
+            if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
+                $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'End time must be after start time'));
+            } else {
+                // start_time / end_time mirrors scheduled times for display consistency
+                $model->start_time = $model->scheduled_start;
+                $model->end_time   = $model->scheduled_end;
+
+                if ($model->save()) {
+                    // Update Calendar Entry with corrected UTC times
                     if ($model->calendarEntry) {
                         $calendarEntry = $model->calendarEntry;
                         $calendarEntry->title = $model->title;
                         $calendarEntry->description = $model->description . "\n\n### [JOIN WATCH ROOM](" . $model->getUrl() . ")";
-                        
-                        $startDt = new \DateTime($model->scheduled_start);
-                        $endDt = new \DateTime($model->scheduled_end);
-                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
-                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
-                        $calendarEntry->time_zone = $model->timezone;
-                        
+                        $calendarEntry->start_datetime = $model->scheduled_start;
+                        $calendarEntry->end_datetime   = $model->scheduled_end;
+                        $calendarEntry->time_zone      = $model->timezone;
                         $calendarEntry->save();
                     }
-                    
+
                     Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream updated.'));
                     return $this->redirect(['index']);
-                 }
+                }
             }
         }
         
