@@ -113,6 +113,24 @@ class RoomController extends Controller
                 }
             }
 
+            // Cache Description for Webhook to pick up
+            if (!empty($model->description)) {
+                $descKey = 'jitsiMeetCloud8x8:roomDescription:' . strtolower($fixedName);
+                Yii::$app->cache->set($descKey, $model->description, 3600);
+            }
+
+            // Cache Public/Private setting
+            $isPublic = Yii::$app->request->post('is_public');
+            $publicKey = 'jitsiMeetCloud8x8:roomIsPublic:' . strtolower($fixedName);
+            Yii::$app->cache->set($publicKey, $isPublic ? '1' : '0', 3600);
+
+            // Cache Topics for Webhook to pick up
+            $topics = Yii::$app->request->post('topics');
+            if (!empty($topics)) {
+                $topicsKey = 'jitsiMeetCloud8x8:roomTopics:' . strtolower($fixedName);
+                Yii::$app->cache->set($topicsKey, $topics, 3600);
+            }
+
             return $this->redirect(['open', 'name' => $fixedName]);
         }
 
