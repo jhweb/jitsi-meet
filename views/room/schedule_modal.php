@@ -226,15 +226,11 @@ $submitButtonText = $isEdit ? Yii::t('JitsiMeetCloud8x8Module.base', 'Save Chang
     <?= $form->field($model, 'lobby_enabled')->checkbox()->label(Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Waiting Room (Lobby)')) ?>
 
     <div class="form-group">
-        <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Timezone') ?></label>
-        <?= Html::dropDownList('JitsiLiveStream[timezone]', $model->timezone ?: date_default_timezone_get(), [
-            'UTC' => 'UTC',
-            'Africa/Johannesburg' => 'Africa/Johannesburg (SAST)',
-            'Europe/London' => 'Europe/London (GMT/BST)',
-            'America/New_York' => 'America/New York (EST/EDT)',
-            'America/Los_Angeles' => 'America/Los Angeles (PST/PDT)',
-            'Asia/Tokyo' => 'Asia/Tokyo (JST)',
-        ], ['class' => 'form-control']) ?>
+        <p class="text-muted" style="font-size: 12px; margin-bottom: 0;">
+            <i class="fa fa-clock-o"></i>
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Times are shown in your profile timezone.') ?>
+            <strong><?= Yii::$app->formatter->timeZone ?></strong>.
+        </p>
     </div>
 
     <div class="alert alert-info">

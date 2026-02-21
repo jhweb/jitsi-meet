@@ -285,6 +285,13 @@ class WebhookController extends Controller
             if ($cache->get($lobbyKey)) {
                 $stream->lobby_enabled = 1;
             }
+
+            // Set Space ID from Cache (instant streams)
+            $spaceKey = 'jitsiMeetCloud8x8:roomSpaceId:' . strtolower($roomName);
+            $cachedSpaceId = $cache->get($spaceKey);
+            if ($cachedSpaceId) {
+                $stream->space_id = $cachedSpaceId;
+            }
         }
         
         // Fallback for title

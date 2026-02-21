@@ -43,7 +43,48 @@ class RoomController extends Controller
     public function actionCreate()
     {
         $model = new JoinRoomForm();
-        return $this->renderAjax('create_modal', ['model' => $model]);
+
+        // Prepare Space/Profile targets (same pattern as actionSchedule)
+        $user = Yii::$app->user->getIdentity();
+        $containers = [];
+        $defaultContainerGuid = null;
+        $highestActivity = 0;
+
+        if ($user) {
+            $profileGuid = $user->contentContainerRecord->guid;
+            $containers[$profileGuid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Your Profile');
+            $defaultContainerGuid = $profileGuid;
+
+            // Fetch member spaces
+            $memberships = Membership::findAll(['user_id' => $user->id]);
+            foreach ($memberships as $membership) {
+                if ($membership->space) {
+                    $space = $membership->space;
+                    if ($space->visibility === Space::VISIBILITY_NONE) {
+                        continue;
+                    }
+                    $containers[$space->contentContainerRecord->guid] = Yii::t('JitsiMeetCloud8x8Module.base', 'Space: {name}', ['name' => $space->displayName]);
+
+                    // Track most active space (by member count as proxy)
+                    $memberCount = $space->getMemberships()->count();
+                    if ($memberCount > $highestActivity) {
+                        $highestActivity = $memberCount;
+                        $defaultContainerGuid = $space->contentContainerRecord->guid;
+                    }
+                }
+            }
+
+            // If only one option (profile only), default to profile
+            if (count($containers) <= 1) {
+                $defaultContainerGuid = $profileGuid;
+            }
+        }
+
+        return $this->renderAjax('create_modal', [
+            'model' => $model,
+            'containers' => $containers,
+            'defaultContainerGuid' => $defaultContainerGuid,
+        ]);
     }
 
     public function actionIndex()
@@ -63,25 +104,73 @@ class RoomController extends Controller
                 Yii::$app->cache->set($lobbyKey, true, 3600);
             }
 
+            // Cache Space ID for Webhook to pick up
+            if (!empty($model->targetContainer)) {
+                $container = ContentContainer::findRecord($model->targetContainer);
+                if ($container instanceof Space) {
+                    $spaceKey = 'jitsiMeetCloud8x8:roomSpaceId:' . strtolower($fixedName);
+                    Yii::$app->cache->set($spaceKey, $container->id, 3600);
+                }
+            }
+
+            // Cache Description for Webhook to pick up
+            if (!empty($model->description)) {
+                $descKey = 'jitsiMeetCloud8x8:roomDescription:' . strtolower($fixedName);
+                Yii::$app->cache->set($descKey, $model->description, 3600);
+            }
+
+            // Cache Public/Private setting
+            $isPublic = Yii::$app->request->post('is_public');
+            $publicKey = 'jitsiMeetCloud8x8:roomIsPublic:' . strtolower($fixedName);
+            Yii::$app->cache->set($publicKey, $isPublic ? '1' : '0', 3600);
+
+            // Cache Topics for Webhook to pick up
+            $topics = Yii::$app->request->post('topics');
+            if (!empty($topics)) {
+                $topicsKey = 'jitsiMeetCloud8x8:roomTopics:' . strtolower($fixedName);
+                Yii::$app->cache->set($topicsKey, $topics, 3600);
+            }
+
             return $this->redirect(['open', 'name' => $fixedName]);
         }
 
         $entriesPerPage = $this->module->getSettingsForm()->entriesPerPage;
+
+        // Read filter parameters
+        $filterSpaceId = Yii::$app->request->get('space_id');
+        $filterCreatorId = Yii::$app->request->get('creator_id');
+
+        // Build space condition for filtering
+        $spaceCondition = [];
+        if ($filterSpaceId === 'profile') {
+            $spaceCondition = ['space_id' => null];
+        } elseif (!empty($filterSpaceId)) {
+            $spaceCondition = ['space_id' => (int)$filterSpaceId];
+        }
+
+        $creatorCondition = [];
+        if (!empty($filterCreatorId)) {
+            $creatorCondition = ['creator_id' => (int)$filterCreatorId];
+        }
         
         // Get scheduled streams (upcoming)
         $scheduledStreams = [];
         if ($this->module->isSchedulingEnabled()) {
-            $scheduledStreams = JitsiLiveStream::find()
+            $q = JitsiLiveStream::find()
                 ->where(['status' => JitsiLiveStream::STATUS_SCHEDULED])
-                ->orderBy(['scheduled_start' => SORT_ASC])
-                ->all();
+                ->andFilterWhere($spaceCondition)
+                ->andFilterWhere($creatorCondition)
+                ->orderBy(['scheduled_start' => SORT_ASC]);
+            $scheduledStreams = $q->all();
         }
         
         // Get active/live streams
-        $allLiveStreams = JitsiLiveStream::find()
+        $liveQuery = JitsiLiveStream::find()
             ->where(['status' => JitsiLiveStream::STATUS_LIVE])
-            ->orderBy(['start_time' => SORT_DESC])
-            ->all();
+            ->andFilterWhere($spaceCondition)
+            ->andFilterWhere($creatorCondition)
+            ->orderBy(['start_time' => SORT_DESC]);
+        $allLiveStreams = $liveQuery->all();
             
         $activeStreams = [];
         
@@ -115,7 +204,10 @@ class RoomController extends Controller
         $activeCount = count($activeStreams) + count($scheduledStreams);
         
         // For ended streams, adjust limit on page 1
-        $query = JitsiLiveStream::find()->where(['status' => JitsiLiveStream::STATUS_ENDED]);
+        $query = JitsiLiveStream::find()
+            ->where(['status' => JitsiLiveStream::STATUS_ENDED])
+            ->andFilterWhere($spaceCondition)
+            ->andFilterWhere($creatorCondition);
         $countQuery = clone $query;
         $totalEnded = $countQuery->count();
         
@@ -128,6 +220,20 @@ class RoomController extends Controller
         
         // Check if user can schedule
         $canSchedule = $this->module->isSchedulingEnabled() && Yii::$app->user->can(CanSchedule::class);
+
+        // Build space list for filter dropdown
+        $spaceFilterList = [];
+        if (!Yii::$app->user->isGuest) {
+            $userSpaces = Membership::find()
+                ->where(['user_id' => Yii::$app->user->id])
+                ->joinWith('space')
+                ->all();
+            foreach ($userSpaces as $m) {
+                if ($m->space && $m->space->visibility !== Space::VISIBILITY_NONE) {
+                    $spaceFilterList[$m->space->id] = $m->space->displayName;
+                }
+            }
+        }
         
         return $this->render('index', [
             'model' => $model,
@@ -140,6 +246,9 @@ class RoomController extends Controller
                 ->all(),
             'pages' => $pages,
             'canSchedule' => $canSchedule,
+            'spaceFilterList' => $spaceFilterList,
+            'filterSpaceId' => $filterSpaceId,
+            'filterCreatorId' => $filterCreatorId,
         ]);
     }
 
@@ -205,7 +314,6 @@ class RoomController extends Controller
 
         if ($model->load(Yii::$app->request->post())) {
             // Validate Word Count (500 words)
-            // Validate Word Count (500 words)
             // Use stricter whitespace splitting for count
             $rawDesc = $model->description;
             // Decode entities to treat &nbsp; as space
@@ -241,6 +349,23 @@ class RoomController extends Controller
                 $start = new \DateTime($model->scheduled_start);
                 $model->scheduled_end = $start->modify('+1 hour')->format('Y-m-d H:i:s');
             }
+
+            // Convert from creator's profile timezone to app timezone for storage.
+            // HumHub sets formatter->defaultTimeZone = Yii::$app->timeZone, so stored
+            // dates must be in the app timezone for correct display conversion.
+            $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
+            $appTz  = new \DateTimeZone(Yii::$app->timeZone);
+
+            // Store the creator's timezone for reference / calendar entries
+            $model->timezone = Yii::$app->formatter->timeZone;
+
+            $startDt = new \DateTime($model->scheduled_start, $userTz);
+            $startDt->setTimezone($appTz);
+            $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
+
+            $endDt = new \DateTime($model->scheduled_end, $userTz);
+            $endDt->setTimezone($appTz);
+            $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
 
             if ($model->save()) {
                 
@@ -280,28 +405,22 @@ class RoomController extends Controller
                         $isPublic = Yii::$app->request->post('is_public');
                         $calendarEntry->content->visibility = $isPublic ? Content::VISIBILITY_PUBLIC : Content::VISIBILITY_PRIVATE;
 
-                        // Convert datetime-local format (2026-01-08T10:30) to Y-m-d H:i:s
-                        $startDt = new \DateTime($model->scheduled_start);
-                        $endDt = new \DateTime($model->scheduled_end);
-                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
-                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
+                        // Use already converted values
+                        $calendarEntry->start_datetime = $model->scheduled_start;
+                        $calendarEntry->end_datetime = $model->scheduled_end;
                         $calendarEntry->all_day = $model->all_day;
                         $calendarEntry->time_zone = $model->timezone;
-                        
-                        // Set Event Type
-                        $typeId = Yii::$app->request->post('type_id');
-                        if ($typeId) {
-                            $calendarEntry->type_id = $typeId;
-                        }
-                        
-                        // Enable participation and ensure it's published mechanism
-                        $calendarEntry->participant_info = 1; 
-                        $calendarEntry->participation_mode = 2; // CalendarEntry::PARTICIPATION_MODE_ALL (Hardcoded to prevent undefined constant in older versions)
                         
                         // Force Published State (1)
                         $calendarEntry->content->state = 1; // Content::STATE_PUBLISHED 
                         
                         if ($calendarEntry->save()) {
+                            // Set Event Type (Must be done after save/content creation)
+                            $typeId = Yii::$app->request->post('type_id');
+                            if ($typeId) {
+                                $calendarEntry->setType($typeId);
+                            }
+
                             $model->calendar_entry_id = $calendarEntry->id;
                             $model->save();
                             
@@ -1073,31 +1192,44 @@ class RoomController extends Controller
         }
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-             if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
-                 $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'End time must be after start time'));
-            } else {
-                 $model->start_time = (new \DateTime($model->scheduled_start))->format('Y-m-d H:i:s');
-                 $model->end_time = (new \DateTime($model->scheduled_end))->format('Y-m-d H:i:s');
+            // Convert from creator's profile timezone to app timezone — same logic as actionSchedule.
+            // HumHub stores dates in Yii::$app->timeZone (server timezone).
+            $userTz = new \DateTimeZone(Yii::$app->formatter->timeZone);
+            $appTz  = new \DateTimeZone(Yii::$app->timeZone);
 
-                 if ($model->save()) {
-                    // Update Calendar Entry
+            // Store the updated timezone identifier on the model
+            $model->timezone = Yii::$app->formatter->timeZone;
+
+            $startDt = new \DateTime($model->scheduled_start, $userTz);
+            $startDt->setTimezone($appTz);
+            $model->scheduled_start = $startDt->format('Y-m-d H:i:s');
+
+            $endDt = new \DateTime($model->scheduled_end, $userTz);
+            $endDt->setTimezone($appTz);
+            $model->scheduled_end = $endDt->format('Y-m-d H:i:s');
+
+            if (strtotime($model->scheduled_end) <= strtotime($model->scheduled_start)) {
+                $model->addError('scheduled_end', Yii::t('JitsiMeetCloud8x8Module.base', 'End time must be after start time'));
+            } else {
+                // start_time / end_time mirrors scheduled times for display consistency
+                $model->start_time = $model->scheduled_start;
+                $model->end_time   = $model->scheduled_end;
+
+                if ($model->save()) {
+                    // Update Calendar Entry with corrected UTC times
                     if ($model->calendarEntry) {
                         $calendarEntry = $model->calendarEntry;
                         $calendarEntry->title = $model->title;
                         $calendarEntry->description = $model->description . "\n\n### [JOIN WATCH ROOM](" . $model->getUrl() . ")";
-                        
-                        $startDt = new \DateTime($model->scheduled_start);
-                        $endDt = new \DateTime($model->scheduled_end);
-                        $calendarEntry->start_datetime = $startDt->format('Y-m-d H:i:s');
-                        $calendarEntry->end_datetime = $endDt->format('Y-m-d H:i:s');
-                        $calendarEntry->time_zone = $model->timezone;
-                        
+                        $calendarEntry->start_datetime = $model->scheduled_start;
+                        $calendarEntry->end_datetime   = $model->scheduled_end;
+                        $calendarEntry->time_zone      = $model->timezone;
                         $calendarEntry->save();
                     }
-                    
+
                     Yii::$app->session->setFlash('success', Yii::t('JitsiMeetCloud8x8Module.base', 'Stream updated.'));
                     return $this->redirect(['index']);
-                 }
+                }
             }
         }
         

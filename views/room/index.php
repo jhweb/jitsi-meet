@@ -15,6 +15,9 @@ use yii\widgets\Pjax;
 /* @var $endedStreams \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream[] */
 /* @var $canSchedule bool */
 /* @var $pages \yii\data\Pagination */
+/* @var $spaceFilterList array */
+/* @var $filterSpaceId string|null */
+/* @var $filterCreatorId string|null */
 
 $assets = \humhubContrib\modules\jitsiMeetCloud8x8\assets\Assets::register($this);
 
@@ -28,19 +31,65 @@ $filter = Yii::$app->request->get('filter', 'all');
     <!-- Filter & Action Bar -->
     <div class="jitsi-filter-bar">
         <div class="jitsi-filters">
-            <a href="<?= Url::to(['index', 'filter' => 'all']) ?>" class="jitsi-filter-btn <?= $filter === 'all' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'all', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'all' ? 'active' : '' ?>">
                 <i class="fa fa-th-large"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Streams') ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'live']) ?>" class="jitsi-filter-btn <?= $filter === 'live' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'live', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'live' ? 'active' : '' ?>">
                 <i class="fa fa-dot-circle-o" style="<?= $filter === 'live' ? '' : 'color: var(--jitsi-live);' ?>"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live Now') ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'scheduled']) ?>" class="jitsi-filter-btn <?= $filter === 'scheduled' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'scheduled', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'scheduled' ? 'active' : '' ?>">
                 <i class="fa fa-calendar"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Scheduled') ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'ended']) ?>" class="jitsi-filter-btn <?= $filter === 'ended' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'ended', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'ended' ? 'active' : '' ?>">
                 <i class="fa fa-history"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Ended') ?>
             </a>
         </div>
+
+        <?php if (!empty($spaceFilterList) || !Yii::$app->user->isGuest): ?>
+        <div class="jitsi-dropdown-filters">
+            <?php if (!empty($spaceFilterList)): ?>
+            <select id="jitsi-space-filter" class="jitsi-dropdown-select">
+                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Spaces') ?></option>
+                <option value="profile" <?= $filterSpaceId === 'profile' ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Profile Only') ?></option>
+                <?php foreach ($spaceFilterList as $spId => $spName): ?>
+                    <option value="<?= $spId ?>" <?= $filterSpaceId == $spId ? 'selected' : '' ?>><?= Html::encode($spName) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <?php endif; ?>
+            <select id="jitsi-member-filter" class="jitsi-dropdown-select">
+                <option value=""><?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Members') ?></option>
+                <?php if (!Yii::$app->user->isGuest): ?>
+                    <option value="<?= Yii::$app->user->id ?>" <?= $filterCreatorId == Yii::$app->user->id ? 'selected' : '' ?>><?= Yii::t('JitsiMeetCloud8x8Module.base', 'My Streams') ?></option>
+                <?php endif; ?>
+            </select>
+            <?php if (!empty($filterSpaceId) || !empty($filterCreatorId)): ?>
+                <a href="<?= Url::to(['index', 'filter' => $filter]) ?>" class="jitsi-clear-filters-btn">
+                    <i class="fa fa-times"></i>
+                </a>
+            <?php endif; ?>
+        </div>
+        <script <?= Html::nonce() ?>>
+            (function() {
+                function applyFilters() {
+                    var spaceId = document.getElementById('jitsi-space-filter') ? document.getElementById('jitsi-space-filter').value : '';
+                    var creatorId = document.getElementById('jitsi-member-filter') ? document.getElementById('jitsi-member-filter').value : '';
+                    var params = new URLSearchParams(window.location.search);
+                    
+                    if (spaceId) { params.set('space_id', spaceId); } else { params.delete('space_id'); }
+                    if (creatorId) { params.set('creator_id', creatorId); } else { params.delete('creator_id'); }
+                    params.set('filter', '<?= Html::encode($filter) ?>');
+                    params.delete('page');
+                    
+                    window.location.href = window.location.pathname + '?' + params.toString();
+                }
+                
+                var spaceSelect = document.getElementById('jitsi-space-filter');
+                var memberSelect = document.getElementById('jitsi-member-filter');
+                if (spaceSelect) spaceSelect.addEventListener('change', applyFilters);
+                if (memberSelect) memberSelect.addEventListener('change', applyFilters);
+            })();
+        </script>
+        <?php endif; ?>
 
         <div class="jitsi-actions">
             <?php if ($canSchedule): ?>

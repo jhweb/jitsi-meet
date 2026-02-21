@@ -312,7 +312,9 @@ class JitsiLiveStream extends ActiveRecord
      */
     public function getTimezone(): string
     {
-        return $this->timezone ?: 'UTC';
+        // Stored timezone is the creator's profile timezone at time of scheduling.
+        // Falls back to the current viewer's formatter timezone (from their profile).
+        return $this->timezone ?: Yii::$app->formatter->timeZone;
     }
 
     /**
