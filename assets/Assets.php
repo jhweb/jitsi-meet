@@ -25,7 +25,7 @@ class Assets extends AssetBundle
     public function init()
     {
         $this->initJitsiApiJs();
-        $this->sourcePath = dirname(__FILE__) . '/../resources';
+        $this->sourcePath = __DIR__ . '/../resources';
         parent::init();
     }
 
