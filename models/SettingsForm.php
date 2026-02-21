@@ -63,13 +63,9 @@ class SettingsForm extends Model
             ['jitsiDomain', 'string'],
             [['menuTitle', 'jitsiAppID', 'jitsiAppSecret', 'roomPrefix'], 'string'],
             ['enableJwt', 'boolean'],
-<<<<<<< HEAD
             [['jitsiAppID', 'jitsiAppSecret'], 'required', 'when' => function($model) {
                 return $model->enableJwt;
             }, 'whenClient' => "function (attribute, value) {
-=======
-            [['jitsiAppID', 'jitsiAppSecret'], 'required', 'when' => fn($model) => $model->enableJwt, 'whenClient' => "function (attribute, value) {
->>>>>>> master
                 return $('#settingsform-enablejwt').is(':checked');
             }"],
             [['mode'], 'in', 'range' => ['self_hosted', 'jaas']],
