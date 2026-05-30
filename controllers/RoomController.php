@@ -32,8 +32,8 @@ class RoomController extends Controller
     protected function getAccessRules()
     {
         return [
-            ['permissions' => [CanAccess::class], 'actions' => ['index']],
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
+            ['permissions' => [CanAccess::class]],
         ];
     }
 
@@ -337,7 +337,7 @@ class RoomController extends Controller
                          Yii::error("Calendar Integration Error: " . $e->getMessage(), 'jitsi-meet-cloud-8x8');
                          // Rollback
                          $model->delete();
-                         $model->addError('title', 'System Error: ' . $e->getMessage());
+                         $model->addError('title', 'System Error: An unexpected error occurred while creating the calendar entry.');
                          
                          if (Yii::$app->request->isAjax) {
                                 return $this->renderAjax('schedule_modal', [
@@ -380,10 +380,15 @@ class RoomController extends Controller
 
         // Security: Check 30-minute rule for scheduled streams
         $stream = JitsiLiveStream::find()->where(['room_name' => $name])->one();
-        if ($stream && $stream->scheduled_start && !Yii::$app->user->isGuest) {
+        if ($stream && $stream->scheduled_start) {
             $startTs = strtotime($stream->scheduled_start);
             // If more than 30 mins before start
             if ($startTs > (time() + 1800)) {
+                if (Yii::$app->user->isGuest) {
+                     // Guests are never allowed early access
+                     throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'This event has not started yet. You can join 30 minutes before the start time.'));
+                }
+
                 $user = Yii::$app->user->getIdentity();
                 // Only creator or system admin can join early (for testing)
                 if ($stream->creator_id != $user->id && !$user->isSystemAdmin()) {
