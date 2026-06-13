@@ -33,27 +33,4 @@ class JoinRoomForm extends \yii\base\Model
         ];
     }
 
-   /**
-     * WIP!
-     */
-    public function getJwt() {
-        $key = "my_jitsi_app_secret2";
-        $payload = [
-            "iss" => "my_web_client",
-            "aud" => "my_jitsi_app_id",
-            "sub" => "meet.jitsi",
-            "room" => "*",
-            "context" => [
-                "user" => [
-                    'avatar' => "https:/gravatar.com/avatar/abc123",
-                    'name' => 'XXXYYY',
-                    'email' => 'jdoe@example.com',
-                    //                    'id' => 'asd'
-                ],
-            ]
-        ];
-
-        $jwt = JWT::encode($payload, $key, 'HS256');
-
-    }
 }
