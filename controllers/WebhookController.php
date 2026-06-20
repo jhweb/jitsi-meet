@@ -6,6 +6,7 @@ use humhub\components\Controller;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhub\modules\user\models\User;
 use Yii;
+use yii\validators\UrlValidator;
 use yii\web\Response;
 
 class WebhookController extends Controller
@@ -551,6 +552,13 @@ class WebhookController extends Controller
              return;
         }
 
+        // Security: Validate URL
+        $urlValidator = new UrlValidator(['validSchemes' => ['http', 'https']]);
+        if (!$urlValidator->validate($link)) {
+            Yii::warning("Jitsi Webhook: Invalid URL received in DOCUMENT_ADDED. Link: $link", 'jitsi-meet-cloud-8x8');
+            return;
+        }
+
         $stream = $this->findStream($roomName, $sessionId);
         if ($stream) {
             if ($stream->addFileUrl($link) && $stream->save()) {
@@ -821,6 +829,13 @@ class WebhookController extends Controller
 
         if (!$link) {
             Yii::warning("Jitsi Webhook: No link found in payload for $attribute. Room: $roomName", 'jitsi-meet-cloud-8x8');
+            return;
+        }
+
+        // Security: Validate URL
+        $urlValidator = new UrlValidator(['validSchemes' => ['http', 'https']]);
+        if (!$urlValidator->validate($link)) {
+            Yii::warning("Jitsi Webhook: Invalid URL received for $attribute. Link: $link", 'jitsi-meet-cloud-8x8');
             return;
         }
 
