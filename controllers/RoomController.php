@@ -32,7 +32,10 @@ class RoomController extends Controller
     protected function getAccessRules()
     {
         return [
-            ['permissions' => [CanAccess::class], 'actions' => ['index']],
+            ['permissions' => [CanAccess::class], 'actions' => [
+                'index', 'create', 'open', 'modal', 'redirect', 'details',
+                'view-event', 'toggle-reminder', 'attend', 'invite', 'share'
+            ]],
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
         ];
     }
@@ -380,6 +383,17 @@ class RoomController extends Controller
 
         // Security: Check 30-minute rule for scheduled streams
         $stream = JitsiLiveStream::find()->where(['room_name' => $name])->one();
+
+        // Security: Check container visibility
+        if ($stream) {
+            if ($stream->space && !$stream->space->isVisible()) {
+                 throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to access this room.'));
+            }
+            if ($stream->calendarEntry && !$stream->calendarEntry->content->container->isVisible()) {
+                 throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to access this room.'));
+            }
+        }
+
         if ($stream && $stream->scheduled_start && !Yii::$app->user->isGuest) {
             $startTs = strtotime($stream->scheduled_start);
             // If more than 30 mins before start
@@ -543,6 +557,14 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException();
         }
 
+        // Security: Check container visibility
+        if ($stream->space && !$stream->space->isVisible()) {
+             throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to view these details.'));
+        }
+        if ($stream->calendarEntry && !$stream->calendarEntry->content->container->isVisible()) {
+             throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to view these details.'));
+        }
+
         $chatMessages = [];
         if (!empty($stream->chat_log_url)) {
             // Fetch chat log with a 5-second timeout
@@ -607,6 +629,11 @@ class RoomController extends Controller
         $stream = JitsiLiveStream::findOne($id);
         if (!$stream || !$stream->calendarEntry) {
             throw new \yii\web\NotFoundHttpException('Event not found.');
+        }
+
+        // Security: Check container visibility
+        if (!$stream->calendarEntry->content->container->isVisible()) {
+             throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You do not have permission to view this event.'));
         }
 
         $calendarEntry = $stream->calendarEntry;
