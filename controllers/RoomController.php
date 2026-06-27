@@ -32,7 +32,10 @@ class RoomController extends Controller
     protected function getAccessRules()
     {
         return [
-            ['permissions' => [CanAccess::class], 'actions' => ['index']],
+            ['permissions' => [CanAccess::class], 'actions' => [
+                'index', 'create', 'open', 'modal', 'redirect', 'details',
+                'view-event', 'toggle-reminder', 'attend', 'invite', 'share'
+            ]],
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
         ];
     }

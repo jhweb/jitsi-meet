@@ -48,6 +48,19 @@ class JitsiLiveStream extends ActiveRecord
     /**
      * @inheritdoc
      */
+    public function scenarios()
+    {
+        $scenarios = parent::scenarios();
+        $scenarios[self::SCENARIO_DEFAULT] = [
+            'title', 'description', 'scheduled_start', 'scheduled_end',
+            'all_day', 'timezone', 'lobby_enabled'
+        ];
+        return $scenarios;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public static function tableName()
     {
         return 'jitsi_live_stream';
