@@ -1,0 +1,4 @@
+## 2025-05-14 - [XSS] Improper regex replacement on encoded text
+**Vulnerability:** A Cross-Site Scripting (XSS) vulnerability was found in the chat log rendering. The code used `preg_replace` on already HTML-encoded text to convert image URLs into `<img>` tags.
+**Learning:** Performing regex replacements on HTML-encoded text is dangerous. If the regex matches encoded entities (like `&quot;` matched by `\S+`), and those entities are then placed into an HTML attribute, the browser will decode them during parsing. This can allow an attacker to break out of the attribute (e.g., `src="..."`) and execute arbitrary JavaScript (e.g., `onerror="..."`).
+**Prevention:** Always perform parsing/splitting on raw text and then encode each part individually based on its final context (text vs. attribute). Using `preg_split` with `PREG_SPLIT_DELIM_CAPTURE` is a safer alternative to `preg_replace` for this purpose.

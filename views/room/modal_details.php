@@ -391,11 +391,17 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                         }
 
                                         // Image Parsing (Convert URLs ending in image extensions to img tags)
-                                        $text = preg_replace(
-                                            '/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp|svg))(?:\?\S*)?/i', 
-                                            '<br><a href="$1" target="_blank"><img src="$1" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; border: 1px solid #444;" /></a><br>', 
-                                            Html::encode($text)
-                                        );
+                                        // Security Fix: Use preg_split to avoid XSS when parsing URLs from encoded text
+                                        $parts = preg_split('/(https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?\S*)?)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+                                        $text = '';
+                                        foreach ($parts as $i => $part) {
+                                            if ($i % 2 === 0) {
+                                                $text .= Html::encode($part);
+                                            } else {
+                                                $url = Html::encode($part);
+                                                $text .= '<br><a href="' . $url . '" target="_blank"><img src="' . $url . '" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; border: 1px solid #444;" /></a><br>';
+                                            }
+                                        }
 
                                         // Emoji Shortcode Mapping
                                         $chatEmojiMap = [
