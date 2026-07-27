@@ -3,7 +3,7 @@
     "description": "HumHub Jitsi Meet Cloud module with 8x8 JaaS integration",
     "type": "library",
     "require": {
-        "php": ">=7.4",
+        "php": ">=8.1",
         "firebase/php-jwt": "^6.9"
     },
     "autoload": {

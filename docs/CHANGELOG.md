@@ -1,6 +1,33 @@
 Changelog
 =========
 
+1.3.0 (July 27, 2026)
+---------------------
+
+### BREAKING
+
+- **Webhook secret required in JaaS mode** — Webhook POSTs are rejected when `jaasWebhookSecret` is not configured. Previously, an empty secret allowed unsigned webhooks through (fail-open). Configure the secret in both 8x8 and HumHub before upgrading production.
+- **Permission enforcement** — Controller actions now enforce permissions that were registered but previously unchecked:
+  - `CreateVideoChat` — required to create rooms / streams
+  - `JoinVideoChat` — required to open and join rooms
+  - `ManageRecordings` — required to view stream details and recording artifacts
+  Grant **Can create video chats** to member groups that should host meetings. See the README permission matrix.
+
+### Security
+
+- **Webhook fail-closed** — Empty webhook secret returns 401; signature oracle removed from logs; replay/drift tolerance enforced.
+- **JWT server-side only** — JWTs no longer appear in URLs, browser history, or referrers; minted in `actionModal` only; moderator cache key normalized (`strtolower`).
+- **Authorization / IDOR** — `actionDetails` requires creator, space membership, or `ManageRecordings`; container GUID validation on schedule and create prevents cross-space calendar injection.
+- **SSRF allowlist** — Outbound fetches in stream details use HTTPS host allowlist; private/link-local IPs rejected; redirects disabled.
+- **Mass assignment** — Recording and artifact URL fields removed from user-writable attributes; webhook paths assign explicitly.
+- **Guest access** — Unauthenticated users redirected via `loginRequired()` on room open/modal paths.
+
+### Other
+
+- Raise minimum HumHub to **1.17** and PHP to **8.1** (matches HumHub 1.17 floor).
+- Brand-neutral defaults; module identity `jitsi-meet-cloud-8x8` / `jhweb/jitsi-meet`.
+- Standalone repo packaging: README, LICENSE, SECURITY.md, CONTRIBUTING.md.
+
 1.2.1 (October 13, 2025)
 ------------------------
 - Enh #45: Replace default meet.jit.si server domain (which has issues for the microphone and camera with the mobile app), with a list of popular ones
