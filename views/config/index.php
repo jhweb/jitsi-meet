@@ -1,82 +1,29 @@
 <?php
 
 use humhub\widgets\Button;
-use yii\bootstrap\ActiveForm;
+use humhub\modules\ui\form\widgets\ActiveForm;
 use yii\helpers\Html;
 use yii\helpers\Url;
+use humhubContrib\modules\jitsiMeetCloud8x8\assets\ConfigAssets;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
 
 /* @var $model SettingsForm */
 
-$script = <<< JS
-$(document).ready(function () {
-    function displayJwtParams(){
-        if ( $('#settingsform-enablejwt').is(':checked') ) {
-          $('.field-settingsform-jitsiappid').show();
-          $('.field-settingsform-jitsiappsecret').show();
-        } else {
-          $('.field-settingsform-jitsiappid').hide();
-          $('.field-settingsform-jitsiappsecret').hide();
-        }
-    }
+ConfigAssets::register($this);
 
-    function displayJaas(){
-        if ($('#settingsform-mode').val() === 'jaas') {
-            $('.field-settingsform-jaasappid').show();
-            $('.field-settingsform-jaaskid').show();
-            $('.field-settingsform-jaasprivatekeypath').show();
-            $('.field-settingsform-jaaswebhooksecret').show();
-            $('.field-settingsform-jaaswebhookdrifttolerance').show();
-            $('.field-settingsform-jaasdomain').show();
-            $('.field-settingsform-jaasenablerecording').show();
-            $('.field-settingsform-jaasenablelivestreaming').show();
-            $('.field-settingsform-jaasenablemoderation').show();
-        } else {
-            $('.field-settingsform-jaasappid').hide();
-            $('.field-settingsform-jaaskid').hide();
-            $('.field-settingsform-jaasprivatekeypath').hide();
-            $('.field-settingsform-jaaswebhooksecret').hide();
-            $('.field-settingsform-jaaswebhookdrifttolerance').hide();
-            $('.field-settingsform-jaasdomain').hide();
-            $('.field-settingsform-jaasenablerecording').hide();
-            $('.field-settingsform-jaasenablelivestreaming').hide();
-            $('.field-settingsform-jaasenablemoderation').hide();
-        }
-    }
+$module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
+$calendarEnabled = $module->isCalendarEnabled();
 
-    function toggleJitsiDomainTextInput() {
-        var dropdown = $('#settingsform-jitsidomain');
-        var textInput = $('.field-settingsform-jitsidomain-text');
-        textInput.children('.form-label').detach();
+$isCustomDomain = !in_array($model->jitsiDomain, SettingsForm::DEFAULT_JITSI_DOMAINS, true);
+$domainOptions = SettingsForm::defaultJitsiDomainOptions();
+$modeOptions = [
+    'self_hosted' => Yii::t('JitsiMeetCloud8x8Module.base', 'Self-Hosted Jitsi'),
+    'jaas' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS (Cloud)'),
+];
 
-        if (dropdown.val() === '') {
-            textInput.removeClass('d-none');
-        } else {
-            textInput.addClass('d-none');
-        }
-    }
-
-    function disabledJitsiDomainField() {
-        var dropdown = $('#settingsform-jitsidomain');
-        var textInputField = $('#settingsform-jitsidomain-text');
-
-        if (dropdown.val() === '') {
-            dropdown.prop('disabled', true);
-        } else {
-            textInputField.prop('disabled', true);
-        }
-    }
-
-    displayJwtParams();
-    displayJaas();
-    toggleJitsiDomainTextInput();
-    $(document.body).on('change', '#settingsform-enablejwt', displayJwtParams);
-    $(document.body).on('change', '#settingsform-mode', function(){ displayJaas(); });
-    $(document.body).on('change', '#settingsform-jitsidomain', toggleJitsiDomainTextInput);
-    $('#configure-form').on('submit', disabledJitsiDomainField);
-});
-JS;
-$this->registerJs($script);
+$connectionOpen = true;
+$featuresOpen = false;
+$permissionsOpen = false;
 ?>
 
 <div class="panel panel-default">
@@ -84,9 +31,11 @@ $this->registerJs($script);
     <div class="panel-heading"><?= Yii::t('JitsiMeetCloud8x8Module.base', '<strong>Jitsi</strong> module configuration'); ?></div>
 
     <div class="panel-body">
-        <?php $form = ActiveForm::begin(['id' => 'configure-form']) ?>
+        <?php $form = ActiveForm::begin(['id' => 'configure-form', 'acknowledge' => true]) ?>
 
-        <?= $form->field($model, 'mode')->dropDownList(['self_hosted' => 'Self-Hosted Jitsi', 'jaas' => '8x8 JaaS (Cloud)']); ?>
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Connection'), !$connectionOpen) ?>
+
+        <?= $form->field($model, 'mode')->dropDownList($modeOptions) ?>
 
         <?php if ($model->mode === 'jaas' && empty($model->jaasWebhookSecret)): ?>
         <div class="alert alert-warning alert-dismissible" role="alert">
@@ -96,68 +45,83 @@ $this->registerJs($script);
         </div>
         <?php endif; ?>
 
-        <?= $form->field($model, 'jitsiDomain')->dropDownList(SettingsForm::defaultJitsiDomainOptions(), ['prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain')])->hint('') ?>
-        <?= $form->field($model, 'jitsiDomain')->textInput(['id' => 'settingsform-jitsidomain-text'])->label('') ?>
-        <?= $form->field($model, 'roomPrefix'); ?>
-        <?= $form->field($model, 'menuTitle'); ?>
+        <?= $form->field($model, 'jitsiDomain')->dropDownList(
+            $domainOptions,
+            ['prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain')]
+        )->hint('') ?>
+        <?= $form->field($model, 'jitsiDomain', [
+            'options' => ['class' => 'form-group field-settingsform-jitsidomain-custom'],
+        ])->textInput([
+            'id' => 'settingsform-jitsidomain-custom',
+            'value' => $isCustomDomain ? $model->jitsiDomain : '',
+        ])->label('') ?>
+        <?= $form->field($model, 'roomPrefix') ?>
+        <?= $form->field($model, 'menuTitle') ?>
 
-        <?= $form->field($model, 'enableJwt')->checkbox(); ?>
-        <?= $form->field($model, 'jitsiAppID'); ?>
-        <?= $form->field($model, 'jitsiAppSecret'); ?>
+        <?= $form->field($model, 'enableJwt')->checkbox() ?>
+        <?= $form->field($model, 'jitsiAppID') ?>
+        <?= $form->field($model, 'jitsiAppSecret') ?>
 
-        <?= $form->field($model, 'jaasAppId'); ?>
-        <?= $form->field($model, 'jaasKid'); ?>
-        <?= $form->field($model, 'jaasPrivateKeyPath'); ?>
-        <?= $form->field($model, 'jaasWebhookSecret'); ?>
-        <?= $form->field($model, 'jaasWebhookDriftTolerance')->textInput(['type' => 'number', 'min' => 0]); ?>
-        <?= $form->field($model, 'jaasDomain'); ?>
-        <?= $form->field($model, 'jaasEnableRecording')->checkbox(); ?>
-        <?= $form->field($model, 'jaasEnableLivestreaming')->checkbox(); ?>
-        <?= $form->field($model, 'jaasEnableModeration')->checkbox(); ?>
+        <?= $form->field($model, 'jaasAppId') ?>
+        <?= $form->field($model, 'jaasKid') ?>
+        <?= $form->field($model, 'jaasPrivateKeyPath') ?>
+        <?= $form->field($model, 'jaasWebhookSecret') ?>
+        <?= $form->field($model, 'jaasWebhookDriftTolerance')->textInput(['type' => 'number', 'min' => 0]) ?>
+        <?= $form->field($model, 'jaasDomain') ?>
 
-        <hr>
-        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Permission Defaults') ?></h4>
-        <div class="alert alert-warning">
-            <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Security Notice:') ?></strong>
-            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Recording and livestreaming permissions are restricted to administrators only by default. These settings control the default state for users who have the appropriate permissions.') ?>
+        <div class="form-group jitsi-webhook-url-group">
+            <label class="control-label" for="jitsi-webhook-url"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="jitsi-webhook-url" value="<?= Html::encode(Url::to(['/jitsi-meet-cloud-8x8/webhook'], true)) ?>" readonly>
+                <span class="input-group-btn">
+                    <button
+                        class="btn btn-default"
+                        type="button"
+                        id="jitsi-webhook-url-copy"
+                        aria-label="<?= Yii::t('JitsiMeetCloud8x8Module.base', 'Copy webhook URL to clipboard') ?>"
+                    ><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Copy') ?></button>
+                </span>
+            </div>
+            <p class="help-block"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Configure this URL in your 8x8 JaaS Console under Webhooks to enable live stream tracking.') ?></p>
         </div>
-        
-        <?= $form->field($model, 'defaultRecordingEnabled')->checkbox(); ?>
-        <?= $form->field($model, 'defaultLivestreamingEnabled')->checkbox(); ?>
-        <?= $form->field($model, 'defaultModerationEnabled')->checkbox(); ?>
-        <hr>
-        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Feature') ?></h4>
-        <?= $form->field($model, 'enableLiveStreamWidget')->checkbox(); ?>
-        <?= $form->field($model, 'liveStreamWidgetTitle'); ?>
-        <?= $form->field($model, 'liveStreamRoomName'); ?>
-        <?= $form->field($model, 'entriesPerPage')->textInput(['type' => 'number', 'min' => 1]); ?>
-        <hr>
-        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Scheduling Features') ?></h4>
-        <?php 
-        $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
-        $calendarEnabled = $module->isCalendarEnabled();
-        ?>
+
+        <?= $form->endCollapsibleFields() ?>
+
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Features'), !$featuresOpen) ?>
+
+        <?= $form->field($model, 'jaasEnableRecording')->checkbox() ?>
+        <?= $form->field($model, 'jaasEnableLivestreaming')->checkbox() ?>
+        <?= $form->field($model, 'jaasEnableModeration')->checkbox() ?>
+
+        <?= $form->field($model, 'enableLiveStreamWidget')->checkbox() ?>
+        <?= $form->field($model, 'liveStreamWidgetTitle') ?>
+        <?= $form->field($model, 'liveStreamRoomName') ?>
+        <?= $form->field($model, 'entriesPerPage')->textInput(['type' => 'number', 'min' => 1]) ?>
+
         <?php if (!$calendarEnabled): ?>
         <div class="alert alert-warning">
             <i class="fa fa-exclamation-triangle"></i>
             <?= Yii::t('JitsiMeetCloud8x8Module.base', 'The HumHub Calendar module is required for scheduling features. Please install and enable the Calendar module to use this feature.') ?>
         </div>
         <?php endif; ?>
-        <?= $form->field($model, 'enableScheduling')->checkbox(['disabled' => !$calendarEnabled]); ?>
-        <hr>
-        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'User Guide') ?></h4>
-        <?= $form->field($model, 'enableTour')->checkbox(); ?>
+        <?= $form->field($model, 'enableScheduling')->checkbox(['disabled' => !$calendarEnabled]) ?>
 
-        <div class="form-group">
-            <label class="control-label"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>
-            <div class="input-group">
-                <input type="text" class="form-control" value="<?= Url::to(['/jitsi-meet-cloud-8x8/webhook'], true) ?>" readonly>
-                <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value)">Copy</button>
-                </span>
-            </div>
-            <p class="help-block"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Configure this URL in your 8x8 JaaS Console under Webhooks to enable live stream tracking.') ?></p>
+        <?= $form->field($model, 'enableTour')->checkbox() ?>
+
+        <?= $form->endCollapsibleFields() ?>
+
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Permission Defaults'), !$permissionsOpen) ?>
+
+        <div class="alert alert-warning">
+            <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Security Notice:') ?></strong>
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Recording and livestreaming permissions are restricted to administrators only by default. These settings control the default state for users who have the appropriate permissions.') ?>
         </div>
+
+        <?= $form->field($model, 'defaultRecordingEnabled')->checkbox() ?>
+        <?= $form->field($model, 'defaultLivestreamingEnabled')->checkbox() ?>
+        <?= $form->field($model, 'defaultModerationEnabled')->checkbox() ?>
+
+        <?= $form->endCollapsibleFields() ?>
 
         <?= Button::save()->submit() ?>
         <?php ActiveForm::end() ?>
@@ -165,70 +129,72 @@ $this->registerJs($script);
 </div>
 
 <?php if ($model->mode === 'jaas'): ?>
+<?php
+$keyPath = getenv('HUMHUB_JAAS_PRIVATE_KEY_PATH') ?: $model->jaasPrivateKeyPath;
+$keyExists = !empty($keyPath) && file_exists($keyPath);
+$keyReadable = $keyExists && is_readable($keyPath);
+$keySize = ($keyExists && is_readable($keyPath)) ? @filesize($keyPath) : false;
+?>
 <div class="panel panel-info">
     <div class="panel-heading">
         <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS Debug Information') ?></h4>
     </div>
     <div class="panel-body">
-        
+
         <div class="row">
             <div class="col-md-6">
-                <h5>Configuration Status</h5>
+                <h5><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Configuration Status') ?></h5>
                 <ul class="list-unstyled">
                     <li>
-                        <strong>App ID:</strong> 
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'App ID:') ?></strong>
                         <?php if (!empty($model->jaasAppId)): ?>
-                            <span class="label label-success">Set</span>
+                            <span class="label label-success"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set') ?></span>
                         <?php else: ?>
-                            <span class="label label-danger">Missing</span>
+                            <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Missing') ?></span>
                         <?php endif; ?>
                     </li>
                     <li>
-                        <strong>API Key:</strong> 
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'API Key:') ?></strong>
                         <?php if (!empty($model->jaasKid)): ?>
-                            <span class="label label-success">Set</span>
+                            <span class="label label-success"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set') ?></span>
                         <?php else: ?>
-                            <span class="label label-danger">Missing</span>
+                            <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Missing') ?></span>
                         <?php endif; ?>
                     </li>
                     <li>
-                        <strong>Private Key Path:</strong> 
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Private Key Path:') ?></strong>
                         <?php if (!empty($model->jaasPrivateKeyPath)): ?>
-                            <span class="label label-success">Set</span>
+                            <span class="label label-success"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set') ?></span>
                         <?php else: ?>
-                            <span class="label label-danger">Missing</span>
+                            <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Missing') ?></span>
                         <?php endif; ?>
                     </li>
                 </ul>
             </div>
-            
+
             <div class="col-md-6">
-                <h5>Private Key File Status</h5>
-                <?php 
-                $keyPath = getenv('HUMHUB_JAAS_PRIVATE_KEY_PATH') ?: $model->jaasPrivateKeyPath;
-                $keyExists = !empty($keyPath) && file_exists($keyPath);
-                $keyReadable = $keyExists && is_readable($keyPath);
-                ?>
+                <h5><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Private Key File Status') ?></h5>
                 <ul class="list-unstyled">
                     <li>
-                        <strong>File Exists:</strong> 
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File Exists:') ?></strong>
                         <?php if ($keyExists): ?>
-                            <span class="label label-success">Yes</span>
+                            <span class="label label-success"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Yes') ?></span>
                         <?php else: ?>
-                            <span class="label label-danger">No</span>
+                            <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No') ?></span>
                         <?php endif; ?>
                     </li>
                     <li>
-                        <strong>File Readable:</strong> 
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File Readable:') ?></strong>
                         <?php if ($keyReadable): ?>
-                            <span class="label label-success">Yes</span>
+                            <span class="label label-success"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Yes') ?></span>
                         <?php else: ?>
-                            <span class="label label-danger">No</span>
+                            <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No') ?></span>
                         <?php endif; ?>
                     </li>
-                    <?php if ($keyExists): ?>
+                    <?php if ($keySize !== false): ?>
                     <li>
-                        <strong>File Size:</strong> <?= filesize($keyPath) ?> bytes
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File Size:') ?></strong>
+                        <?= (int) $keySize ?> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'bytes') ?>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -237,18 +203,18 @@ $this->registerJs($script);
 
         <div class="row">
             <div class="col-md-12">
-                <h5>Quick Actions</h5>
+                <h5><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Quick Actions') ?></h5>
                 <p>
-                    <?= Button::primary('Test JWT Generation')->link(Url::to(['test-jwt'])) ?>
-                    <small class="text-muted">Generate a test JWT to verify your configuration</small>
+                    <?= Button::primary(Yii::t('JitsiMeetCloud8x8Module.base', 'Test JWT Generation'))->link(Url::to(['test-jwt'])) ?>
+                    <small class="text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Generate a test JWT to verify your configuration') ?></small>
                 </p>
-                
-                <h5>Setup Instructions</h5>
+
+                <h5><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Setup Instructions') ?></h5>
                 <ol>
-                    <li>Place your 8x8 private key file at: <code><?= Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') ?></code></li>
-                    <li>Set proper permissions: <code>chmod 600 <?= Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') ?></code></li>
-                    <li>Ensure the file owner matches the PHP process user</li>
-                    <li>Test JWT generation using the button above</li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Place your 8x8 private key file at: {path}', ['path' => '<code>' . Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') . '</code>']) ?></li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set proper permissions: {command}', ['command' => '<code>chmod 600 ' . Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') . '</code>']) ?></li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Ensure the file owner matches the PHP process user') ?></li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Test JWT generation using the button above') ?></li>
                 </ol>
             </div>
         </div>
