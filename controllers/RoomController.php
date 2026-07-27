@@ -6,7 +6,9 @@ use Firebase\JWT\JWT;
 use humhub\components\Controller;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm;
 use humhubContrib\modules\jitsiMeetCloud8x8\Module;
+use humhubContrib\modules\jitsiMeetCloud8x8\components\AllowlistedHttpFetcher;
 use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
+use yii\helpers\Html;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
@@ -671,13 +673,14 @@ class RoomController extends Controller
             throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
         }
 
+        $fetchWarnings = [];
         $chatMessages = [];
         if (!empty($stream->chat_log_url)) {
-            // Fetch chat log with a 5-second timeout
-            $context = stream_context_create(['http' => ['timeout' => 5]]); 
-            $content = @file_get_contents($stream->chat_log_url, false, $context);
-            
-            if ($content !== false) {
+            $fetchResult = AllowlistedHttpFetcher::fetch($stream->chat_log_url);
+            if (!$fetchResult['ok']) {
+                $this->recordFetchRejection($fetchResult, 'chat_log', $fetchWarnings);
+            } else {
+                $content = $fetchResult['content'];
                 // Check for GZIP magic bytes (1f 8b)
                 if (strlen($content) >= 2 && ord($content[0]) == 0x1f && ord($content[1]) == 0x8b) {
                     $decoded = @gzdecode($content);
@@ -685,15 +688,21 @@ class RoomController extends Controller
                         $content = $decoded;
                     }
                 }
-                
+
                 $data = json_decode($content, true);
                 if (is_array($data)) {
                     // Try to find the messages array
                     $candidates = [$data]; // start with root
-                    if (isset($data['messages'])) $candidates[] = $data['messages'];
-                    if (isset($data['data'])) $candidates[] = $data['data'];
-                    if (isset($data['payload'])) $candidates[] = $data['payload'];
-                    
+                    if (isset($data['messages'])) {
+                        $candidates[] = $data['messages'];
+                    }
+                    if (isset($data['data'])) {
+                        $candidates[] = $data['data'];
+                    }
+                    if (isset($data['payload'])) {
+                        $candidates[] = $data['payload'];
+                    }
+
                     foreach ($candidates as $cand) {
                         if (is_array($cand) && count($cand) > 0) {
                             // Relaxed Heuristic: accept array if it looks list-like (indexed keys) or first element is array
@@ -711,18 +720,25 @@ class RoomController extends Controller
 
         $screenSharingContent = [];
         if (!empty($stream->screen_sharing_url)) {
-            $context = stream_context_create(['http' => ['timeout' => 3]]);
-            $content = @file_get_contents($stream->screen_sharing_url, false, $context);
-            if ($content !== false) {
-                $screenSharingContent = json_decode($content, true);
+            $fetchResult = AllowlistedHttpFetcher::fetch($stream->screen_sharing_url, AllowlistedHttpFetcher::DEFAULT_MAX_BYTES, 3);
+            if (!$fetchResult['ok']) {
+                $this->recordFetchRejection($fetchResult, 'screen_sharing', $fetchWarnings);
+            } else {
+                $screenSharingContent = json_decode($fetchResult['content'], true);
             }
         }
 
-        return $this->renderAjax('modal_details', [
+        $html = $this->renderAjax('modal_details', [
             'stream' => $stream,
             'chatMessages' => $chatMessages,
-            'screenSharingContent' => $screenSharingContent
+            'screenSharingContent' => $screenSharingContent,
         ]);
+
+        if (!empty($fetchWarnings) && Yii::$app->user->isAdmin()) {
+            $html = $this->injectFetchWarningsNotice($html, $fetchWarnings);
+        }
+
+        return $html;
     }
 
     /**
@@ -1080,6 +1096,50 @@ class RoomController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Log and collect a safe admin notice when an outbound fetch is rejected.
+     *
+     * @param array{ok: bool, host: string|null, reason: string|null} $fetchResult
+     * @param string[] $fetchWarnings
+     */
+    private function recordFetchRejection(array $fetchResult, string $resource, array &$fetchWarnings): void
+    {
+        $host = $fetchResult['host'] ?? 'unknown';
+        Yii::warning(
+            'Outbound fetch rejected for stream metadata (' . $resource . '): host=' . $host
+            . ', reason=' . ($fetchResult['reason'] ?? 'unknown'),
+            'jitsi-meet-cloud-8x8'
+        );
+
+        $fetchWarnings[] = Yii::t(
+            'JitsiMeetCloud8x8Module.base',
+            'Could not load {resource} from host {host}. The URL was blocked by the outbound fetch allowlist.',
+            ['resource' => $resource, 'host' => $host]
+        );
+    }
+
+    /**
+     * Inject admin-facing fetch warnings into rendered modal HTML without editing the view file.
+     *
+     * @param string[] $fetchWarnings
+     */
+    private function injectFetchWarningsNotice(string $html, array $fetchWarnings): string
+    {
+        $items = '';
+        foreach ($fetchWarnings as $warning) {
+            $items .= '<li>' . Html::encode($warning) . '</li>';
+        }
+
+        $notice = '<div class="alert alert-warning" role="alert">'
+            . '<strong>' . Html::encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Outbound fetch blocked')) . '</strong>'
+            . '<ul style="margin-bottom:0;">' . $items . '</ul>'
+            . '</div>';
+
+        $replaced = preg_replace('/(<div class="modal-body">)/', '$1' . $notice, $html, 1);
+
+        return is_string($replaced) ? $replaced : $html;
     }
 
     private function ensureRoomCreator($roomName, $user)

@@ -65,7 +65,8 @@ class JitsiLiveStream extends ActiveRecord
             [['room_name', 'session_id', 'stream_url', 'event_id', 'title', 'rrule', 'uid', 'timezone'], 'string', 'max' => 255],
             [['recurrence_id'], 'string', 'max' => 50],
             [['description', 'exdate'], 'string'],
-            [['recording_url', 'transcription_url', 'chat_log_url', 'file_urls', 'reactions', 'highlights_url', 'screen_sharing_url', 'speaker_stats', 'rtcstats_url', 'ytstream_url', 'polls', 'feedback'], 'safe'],
+            // URL/metadata fields are webhook-written only — never mass-assignable from forms.
+            [['reactions', 'speaker_stats', 'polls', 'feedback'], 'safe'],
             [['event_id'], 'unique'],
         ];
     }
