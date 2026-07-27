@@ -76,8 +76,9 @@ class RoomWidget extends JsWidget
             'startSilent' => $this->startSilent
         ];
 
-        // Enhanced logging for debugging
-        Yii::info('RoomWidget::getData - Data being passed to frontend: ' . json_encode($data, JSON_PRETTY_PRINT), 'jitsi-meet');
+        $logData = $data;
+        $logData['jwt'] = $this->jwt ? 'present(' . strlen($this->jwt) . ')' : 'absent';
+        Yii::info('RoomWidget::getData - Data being passed to frontend: ' . json_encode($logData, JSON_PRETTY_PRINT), 'jitsi-meet');
 
         return $data;
     }

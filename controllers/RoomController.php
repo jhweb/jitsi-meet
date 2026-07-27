@@ -521,40 +521,15 @@ class RoomController extends Controller
         $mode = $settings->mode ?: 'self_hosted';
         Yii::info("RoomController::actionOpen - Mode: {$mode}", 'jitsi-meet');
 
+        if (Yii::$app->user->isGuest) {
+            Yii::info('RoomController::actionOpen - User is guest, requiring login', 'jitsi-meet');
+            return Yii::$app->user->loginRequired();
+        }
+
         if ($mode === 'jaas') {
             Yii::info('RoomController::actionOpen - JaaS mode selected', 'jitsi-meet');
-            
-            if (Yii::$app->user->isGuest) {
-                Yii::info('RoomController::actionOpen - User is guest, requiring login', 'jitsi-meet');
-                Yii::$app->user->loginRequired();
-            }
-            
-            $user = Yii::$app->user->getIdentity();
-            
-            // Fix: Ensure creator is set in cache regardless of admin status
-            $this->ensureRoomCreator($name, $user);
-            
-            $isModerator = $this->isModeratorForCurrentContext($name);
-            
-            Yii::info("RoomController::actionOpen - User: {$user->displayName} (ID: {$user->id}), Moderator: " . ($isModerator ? 'true' : 'false'), 'jitsi-meet');
-            
-            $jwt = JaasJwtService::createToken($user, $name, $isModerator);
-            if (!empty($jwt)) {
-                $jitsiRoomUrl['jwt'] = $jwt;
-                Yii::info('RoomController::actionOpen - JWT generated and added to URL', 'jitsi-meet');
-            } else {
-                Yii::error('RoomController::actionOpen - JWT generation failed', 'jitsi-meet');
-            }
         } else {
             Yii::info('RoomController::actionOpen - Self-hosted mode selected', 'jitsi-meet');
-            // Legacy HS256 path
-            if ($this->module->getSettingsForm()->enableJwt) {
-                if (Yii::$app->user->isGuest) {
-                    Yii::$app->user->loginRequired();
-                }
-                $jitsiRoomUrl['jwt'] = $this->createJWT($name);
-                Yii::info('RoomController::actionOpen - Legacy JWT generated', 'jitsi-meet');
-            }
         }
 
         $domain = $mode === 'jaas' ? $settings->jaasDomain : $settings->jitsiDomain;
@@ -608,8 +583,27 @@ class RoomController extends Controller
     public function actionModal()
     {
         $name = $this->fixRoomName(Yii::$app->request->get('name'));
-        $jwt = Yii::$app->request->get('jwt');
         $startSilent = Yii::$app->request->get('startSilent') === 'true';
+
+        if (Yii::$app->user->isGuest) {
+            return Yii::$app->user->loginRequired();
+        }
+
+        $user = Yii::$app->user->getIdentity();
+        $settings = $this->module->getSettingsForm();
+        $mode = $settings->mode ?: 'self_hosted';
+        $jwt = '';
+
+        if ($mode === 'jaas') {
+            $this->ensureRoomCreator($name, $user);
+            $isModerator = $this->isModeratorForCurrentContext($name);
+            $jwt = JaasJwtService::createToken($user, $name, $isModerator);
+            if (empty($jwt)) {
+                Yii::error('RoomController::actionModal - JWT generation failed', 'jitsi-meet');
+            }
+        } elseif ($settings->enableJwt) {
+            $jwt = $this->createJWT($name);
+        }
 
         Yii::info("RoomController::actionModal - Room: {$name}, JWT present: " . (!empty($jwt) ? 'yes' : 'no') . ", StartSilent: " . ($startSilent ? 'yes' : 'no'), 'jitsi-meet');
 
@@ -1091,7 +1085,7 @@ class RoomController extends Controller
         if (!empty($roomName)) {
             $cache = Yii::$app->cache ?? null;
             if ($cache !== null) {
-                $cacheKey = 'jitsiMeetCloud8x8:roomCreator:' . $roomName;
+                $cacheKey = 'jitsiMeetCloud8x8:roomCreator:' . strtolower($roomName);
                 $creatorId = $cache->get($cacheKey);
 
                 if ($creatorId === false) {
