@@ -2,6 +2,8 @@ humhub.module('jitsiMeet', function (module, require, $) {
     var modal = require('ui.modal');
     var object = require('util').object;
     var Widget = require('ui.widget').Widget;
+    var log = require('log');
+    var status = require('ui.status');
 
     var Room = function (node, options) {
         Widget.call(this, node, options);
@@ -22,7 +24,7 @@ humhub.module('jitsiMeet', function (module, require, $) {
         this.initJitsi();
 
         this.modal = modal.get('jitsiMeet-modal');
-        this.modal.$.on('hidden.bs.modal', function (evt) {
+        this.modal.$.on('hidden.bs.modal', function () {
             that.modal.clear();
         });
     };
@@ -33,112 +35,106 @@ humhub.module('jitsiMeet', function (module, require, $) {
         evt.finish();
 
         this.jitsiApi.executeCommand('hangup');
+    };
 
-    }
+    Room.prototype._showContainerError = function (container, headingText, bodyText) {
+        if (!container) {
+            return;
+        }
+
+        container.textContent = '';
+
+        var wrapper = document.createElement('div');
+        wrapper.style.cssText = 'padding: 20px; text-align: center; color: var(--danger, #a94442);';
+
+        var heading = document.createElement('h3');
+        heading.textContent = headingText;
+        wrapper.appendChild(heading);
+
+        if (bodyText) {
+            var paragraph = document.createElement('p');
+            paragraph.textContent = bodyText;
+            wrapper.appendChild(paragraph);
+        }
+
+        container.appendChild(wrapper);
+    };
 
     Room.prototype.initJitsi = function () {
         var that = this;
         var mode = this.options.mode || 'self_hosted';
         var domain = this.options.jitsidomain;
 
-        // --- LAZY LOAD EXTERNAL_API.JS ---
-        // Determine the script URL based on mode
         var scriptUrl = 'https://' + domain + '/external_api.js';
         if (mode === 'jaas') {
-             // JaaS usually uses a different domain (8x8.vc) via settings, which is passed as jitsidomain/jaasdomain
-             // But let's respect the domain passed in options
-             var jaasDomain = this.options.jaasdomain || '8x8.vc';
-             scriptUrl = 'https://' + jaasDomain + '/libs/external_api.min.js';
+            var jaasDomain = this.options.jaasdomain || '8x8.vc';
+            scriptUrl = 'https://' + jaasDomain + '/libs/external_api.min.js';
         }
-        
-        // Helper to proceed once/if script is loaded
-        var startMeeting = function() {
-             that._startMeeting();
+
+        var startMeeting = function () {
+            that._startMeeting();
         };
 
         if (typeof window.JitsiMeetExternalAPI === 'undefined') {
-             console.log('JitsiMeet API not found. Loading from:', scriptUrl);
-             $.ajax({
-                 url: scriptUrl,
-                 dataType: "script",
-                 cache: true
-             }).done(function() {
-                 console.log('JitsiMeet API loaded successfully via AJAX.');
-                 startMeeting();
-             }).fail(function(jqxhr, settings, exception) {
-                 console.error('Failed to load JitsiMeet API:', exception);
-                 $('#jitsiMeetD').html('<div style="color:red; text-align:center; padding:20px;">Error loading conferencing API. Please refresh or try again later.</div>');
-             });
+            $.ajax({
+                url: scriptUrl,
+                dataType: 'script',
+                cache: true
+            }).done(function () {
+                startMeeting();
+            }).fail(function (jqxhr, settings, exception) {
+                log.error('Failed to load JitsiMeet API: ' + exception);
+                that._showContainerError(
+                    document.querySelector('#jitsiMeetD'),
+                    'Error loading conferencing API',
+                    'Please refresh or try again later.'
+                );
+                status.error('Failed to load video conferencing API.');
+            });
         } else {
-             console.log('JitsiMeet API already loaded. Starting meeting immediately.');
-             startMeeting();
+            startMeeting();
         }
     };
 
-    // Internal method containing the original initJitsi logic
-    Room.prototype._startMeeting = function() {
+    Room.prototype._startMeeting = function () {
         var that = this;
-        
-        var mode = this.options.mode || 'self_hosted';
-        var domain = this.options.jitsidomain;
-        // Re-evaluate these variables locally as they were used in the original scope
-
-
         var mode = this.options.mode || 'self_hosted';
         var domain = this.options.jitsidomain;
         var roomName = this.options.roomname;
-
-        // Enhanced console logging for debugging
-        console.log('JitsiMeet Room Widget - Initializing Jitsi');
-        console.log('Mode:', mode);
-        console.log('Original domain:', domain);
-        console.log('Original roomName:', roomName);
-        console.log('JWT present:', !!this.options.jwt);
+        var jwt = this.options.jwt;
 
         if (typeof this.options.roomprefix === 'string' && this.options.roomprefix !== '') {
             roomName = this.options.roomprefix + this.options.roomname;
-            console.log('Room name with prefix:', roomName);
         }
 
         if (mode === 'jaas') {
-            // Override domain and roomName per JaaS
             domain = this.options.jaasdomain || '8x8.vc';
             var appId = this.options.jaasappid;
             if (appId) {
                 roomName = appId + '/' + this.options.roomname;
-                console.log('JaaS room name:', roomName);
             }
-            console.log('JaaS domain:', domain);
         }
 
-        jwt = this.options.jwt;
-
-        // Get base URL and domain for generating correct invitation links
         var baseUrl = window.location.protocol + '//' + window.location.host;
         var inviteDomain = window.location.host;
-        var originalRoomName = this.options.roomname; // Original room name without app ID prefix
+        var originalRoomName = this.options.roomname;
         var conferenceUrl = baseUrl + '/conference/' + originalRoomName;
-
-        // Custom invite service URL - this endpoint will return correct URL format
         var inviteServiceUrl = baseUrl + '/jitsi-meet-cloud-8x8/room/invite';
 
-        // Check if startSilent is requested (for dial-in scenarios)
         var startSilent = this.options.startSilent === true ||
             (typeof this.options.startSilent === 'string' && this.options.startSilent === 'true') ||
             window.location.hash.indexOf('config.startSilent=true') !== -1;
 
-        const options = {
+        var options = {
             roomName: roomName,
             parentNode: document.querySelector('#jitsiMeetD'),
-            //Todo: Fixme
             height: window.innerHeight - 160,
             jwt: jwt,
-            nossl: jwt == '',
+            nossl: jwt === '',
             interfaceConfigOverwrite: {
                 RECENT_LIST_ENABLED: false,
                 GENERATE_ROOMNAMES_ON_WELCOME_PAGE: false,
                 DISPLAY_WELCOME_PAGE_CONTENT: false,
-                //filmStripOnly: true,
             },
             userInfo: {
                 fullName: this.options.userdisplayname,
@@ -146,105 +142,59 @@ humhub.module('jitsiMeet', function (module, require, $) {
                 avatarUrl: this.options.useravatar
             },
             configOverwrite: {
-                // Workaround for broken "open in app" link on Android
                 disableDeepLinking: true,
-                // Configure invite domain to use our domain
                 inviteDomain: inviteDomain,
-                // Configure custom invite service URL
-                // This tells Jitsi Meet to use our endpoint for generating invitation URLs
                 inviteServiceUrl: inviteServiceUrl,
-                // Use brandingRoomAlias to customize invite link format
-                // This ensures recording bot emails use /conference/{roomName} format
                 brandingRoomAlias: 'conference/' + originalRoomName,
-                // Configure deployment info
                 deploymentInfo: {
                     shard: 'shard1',
                     region: 'us',
                     userRegion: 'us',
                     appId: mode === 'jaas' ? this.options.jaasappid : undefined
                 },
-                // Configure startSilent for dial-in scenarios
                 startSilent: startSilent,
                 startAudioMuted: startSilent,
                 startVideoMuted: false,
             }
         };
 
-        console.log('JitsiMeet API Options:', Object.assign({}, options, { jwt: !!options.jwt }));
-
         try {
             this.jitsiApi = new JitsiMeetExternalAPI(domain, options);
-            console.log('JitsiMeet API initialized successfully');
-            console.log('Conference URL for invitations:', conferenceUrl);
-            console.log('Invite service URL:', inviteServiceUrl);
 
-            // Override getRoomURL method to return correct URL format
-            // This ensures share/invite functionality uses /conference/{roomName} format
             if (this.jitsiApi && typeof this.jitsiApi.getRoomURL === 'function') {
-                var originalGetRoomURL = this.jitsiApi.getRoomURL.bind(this.jitsiApi);
                 this.jitsiApi.getRoomURL = function () {
-                    console.log('Overriding getRoomURL - returning:', conferenceUrl);
                     return conferenceUrl;
                 };
             }
 
-            // Also try to override the room URL property if it exists
-            if (this.jitsiApi && this.jitsiApi._room) {
-                // Store original room name but override URL generation
-                console.log('JitsiMeet API - Room object found, attempting to override URL');
-            }
-
             this.jitsiApi.addEventListeners({
                 readyToClose: function () {
-                    console.log('JitsiMeet API - readyToClose event');
                     that.close();
                 },
                 videoConferenceJoined: function () {
-                    console.log('JitsiMeet API - videoConferenceJoined event');
-
-                    // After joining, try to override invitation URL generation
-                    // Intercept any invitation/share actions
                     setTimeout(function () {
-                        // Override getRoomURL again after API is fully initialized
                         if (that.jitsiApi && typeof that.jitsiApi.getRoomURL === 'function') {
                             that.jitsiApi.getRoomURL = function () {
-                                console.log('Overriding getRoomURL after join - returning:', conferenceUrl);
                                 return conferenceUrl;
                             };
                         }
-
-                        // Try to find and override invitation UI elements
-                        // This is a workaround to ensure share links use correct format
-                        var inviteButtons = document.querySelectorAll('[data-i18n*="invite"], [aria-label*="invite"], [title*="invite"]');
-                        if (inviteButtons.length > 0) {
-                            console.log('Found invite buttons, setting up click handlers');
-                            inviteButtons.forEach(function (btn) {
-                                btn.addEventListener('click', function (e) {
-                                    console.log('Invite button clicked, conference URL:', conferenceUrl);
-                                    // The invite service URL should handle this, but log for debugging
-                                });
-                            });
-                        }
-                    }, 2000); // Wait 2 seconds for UI to fully load
-                },
-                videoConferenceLeft: function () {
-                    console.log('JitsiMeet API - videoConferenceLeft event');
+                    }, 2000);
                 },
                 error: function (error) {
-                    console.error('JitsiMeet API Error:', error);
+                    log.error('JitsiMeet API error: ' + (error && error.message ? error.message : String(error)));
+                    status.error('Video conference error. Please try again.');
                 }
             });
         } catch (error) {
-            console.error('Failed to initialize JitsiMeet API:', error);
-            // Display user-friendly error message
-            document.querySelector('#jitsiMeetD').innerHTML =
-                '<div style="padding: 20px; text-align: center; color: red;">' +
-                '<h3>Failed to load video conference</h3>' +
-                '<p>Please check your configuration and try again.</p>' +
-                '<p>Error: ' + error.message + '</p>' +
-                '</div>';
+            log.error('Failed to initialize JitsiMeet API: ' + (error && error.message ? error.message : String(error)));
+            this._showContainerError(
+                document.querySelector('#jitsiMeetD'),
+                'Failed to load video conference',
+                'Please check your configuration and try again.'
+            );
+            status.error('Failed to load video conference.');
         }
-    }
+    };
 
     module.export({
         Room: Room,

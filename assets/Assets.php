@@ -10,9 +10,7 @@ use yii\web\View;
 class Assets extends AssetBundle
 {
 
-    public $publishOptions = [
-        'forceCopy' => true
-    ];
+    public $publishOptions = [];
 
     public $jsOptions = [
         'position' => View::POS_BEGIN
@@ -26,6 +24,9 @@ class Assets extends AssetBundle
     {
         $this->initJitsiApiJs();
         $this->sourcePath = dirname(__FILE__) . '/../resources';
+        if (YII_DEBUG) {
+            $this->publishOptions['forceCopy'] = true;
+        }
         parent::init();
     }
 
