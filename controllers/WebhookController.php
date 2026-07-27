@@ -202,10 +202,10 @@ class WebhookController extends Controller
         // Payload timestamp: 1632490058278 (ms).
         // Payload timestamp: 1632490058278 (ms).
         // Header 't' is likely seconds.
-        $tolerance = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
-        if (empty($tolerance) && $tolerance !== 0) {
-             $tolerance = 300;
-        }
+        $rawTolerance = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
+        $tolerance = ($rawTolerance === null || $rawTolerance === '' || (int) $rawTolerance <= 0)
+            ? 300
+            : (int) $rawTolerance;
 
         $now = time();
         if (abs($now - $timestamp) > $tolerance) {
