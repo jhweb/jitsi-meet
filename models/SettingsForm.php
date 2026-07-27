@@ -260,8 +260,8 @@ class SettingsForm extends Model
         $this->defaultModerationEnabled = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('defaultModerationEnabled', 1);
 
         $this->enableLiveStreamWidget = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('enableLiveStreamWidget', 0);
-        $this->liveStreamWidgetTitle = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamWidgetTitle', 'The Oil Press Broadcast Room');
-        $this->liveStreamRoomName = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamRoomName', 'Broadcast');
+        $this->liveStreamWidgetTitle = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamWidgetTitle', 'Live Streams');
+        $this->liveStreamRoomName = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('liveStreamRoomName', 'Live');
     
         $this->entriesPerPage = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('entriesPerPage', 12);
         
