@@ -170,7 +170,7 @@ humhub.module('jitsiMeet', function (module, require, $) {
             }
         };
 
-        console.log('JitsiMeet API Options:', options);
+        console.log('JitsiMeet API Options:', Object.assign({}, options, { jwt: !!options.jwt }));
 
         try {
             this.jitsiApi = new JitsiMeetExternalAPI(domain, options);
