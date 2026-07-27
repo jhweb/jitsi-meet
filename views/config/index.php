@@ -1,29 +1,42 @@
 <?php
 
-use humhub\widgets\Button;
+use humhub\assets\ClipboardJsAsset;
 use humhub\modules\ui\form\widgets\ActiveForm;
-use yii\helpers\Html;
-use yii\helpers\Url;
+use humhub\widgets\Button;
 use humhubContrib\modules\jitsiMeetCloud8x8\assets\ConfigAssets;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\SettingsForm;
+use yii\helpers\Html;
+use yii\helpers\Url;
 
 /* @var $model SettingsForm */
+/* @var $this \humhub\modules\ui\view\components\View */
 
 ConfigAssets::register($this);
+ClipboardJsAsset::register($this);
+
+$this->registerJsConfig('jitsiMeet.config', [
+    'text' => [
+        'webhookUrlCopied' => Yii::t('JitsiMeetCloud8x8Module.base', 'Copied to clipboard'),
+        'webhookUrlCopyFailed' => Yii::t('JitsiMeetCloud8x8Module.base', 'Could not copy to clipboard'),
+    ],
+]);
+
+$domainOptions = SettingsForm::defaultJitsiDomainOptions();
+$isCustomDomain = !isset($domainOptions[$model->jitsiDomain]);
+$dropdownValue = $isCustomDomain ? '__custom__' : $model->jitsiDomain;
+$customDomainValue = $isCustomDomain ? $model->jitsiDomain : '';
+$allDomainOptions = $domainOptions + [
+    '__custom__' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain'),
+];
 
 $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
 $calendarEnabled = $module->isCalendarEnabled();
 
-$isCustomDomain = !in_array($model->jitsiDomain, SettingsForm::DEFAULT_JITSI_DOMAINS, true);
-$domainOptions = SettingsForm::defaultJitsiDomainOptions();
-$modeOptions = [
-    'self_hosted' => Yii::t('JitsiMeetCloud8x8Module.base', 'Self-Hosted Jitsi'),
-    'jaas' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS (Cloud)'),
-];
-
-$connectionOpen = true;
-$featuresOpen = false;
-$permissionsOpen = false;
+$webhookUrl = Url::to(['/jitsi-meet-cloud-8x8/webhook'], true);
+$keyPath = getenv('HUMHUB_JAAS_PRIVATE_KEY_PATH') ?: $model->jaasPrivateKeyPath;
+$keyExists = !empty($keyPath) && file_exists($keyPath);
+$keyReadable = $keyExists && is_readable($keyPath);
+$keySize = $keyExists ? @filesize($keyPath) : false;
 ?>
 
 <div class="panel panel-default">
@@ -33,9 +46,12 @@ $permissionsOpen = false;
     <div class="panel-body">
         <?php $form = ActiveForm::begin(['id' => 'configure-form', 'acknowledge' => true]) ?>
 
-        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Connection'), !$connectionOpen) ?>
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Connection'), false) ?>
 
-        <?= $form->field($model, 'mode')->dropDownList($modeOptions) ?>
+        <?= $form->field($model, 'mode')->dropDownList([
+            'self_hosted' => Yii::t('JitsiMeetCloud8x8Module.base', 'Self-Hosted Jitsi'),
+            'jaas' => Yii::t('JitsiMeetCloud8x8Module.base', '8x8 JaaS (Cloud)'),
+        ]) ?>
 
         <?php if ($model->mode === 'jaas' && empty($model->jaasWebhookSecret)): ?>
         <div class="alert alert-warning alert-dismissible" role="alert">
@@ -45,16 +61,24 @@ $permissionsOpen = false;
         </div>
         <?php endif; ?>
 
-        <?= $form->field($model, 'jitsiDomain')->dropDownList(
-            $domainOptions,
-            ['prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain')]
-        )->hint('') ?>
-        <?= $form->field($model, 'jitsiDomain', [
-            'options' => ['class' => 'form-group field-settingsform-jitsidomain-custom'],
-        ])->textInput([
-            'id' => 'settingsform-jitsidomain-custom',
-            'value' => $isCustomDomain ? $model->jitsiDomain : '',
-        ])->label('') ?>
+        <div class="form-group field-settingsform-jitsidomain">
+            <?= Html::label($model->getAttributeLabel('jitsiDomain'), 'settingsform-jitsidomain', ['class' => 'control-label']) ?>
+            <?= Html::dropDownList('SettingsForm[jitsiDomainSelect]', $dropdownValue, $allDomainOptions, [
+                'id' => 'settingsform-jitsidomain',
+                'class' => 'form-control',
+            ]) ?>
+            <div class="field-settingsform-jitsidomain-custom<?= $isCustomDomain ? '' : ' hide' ?>">
+                <?= Html::textInput('SettingsForm[jitsiDomainCustom]', $customDomainValue, [
+                    'id' => 'settingsform-jitsidomain-custom',
+                    'class' => 'form-control',
+                ]) ?>
+            </div>
+            <?= Html::hiddenInput('SettingsForm[jitsiDomain]', $model->jitsiDomain, ['id' => 'settingsform-jitsidomain-value']) ?>
+            <?php if ($hint = $model->getAttributeHint('jitsiDomain')): ?>
+                <p class="help-block"><?= $hint ?></p>
+            <?php endif; ?>
+        </div>
+
         <?= $form->field($model, 'roomPrefix') ?>
         <?= $form->field($model, 'menuTitle') ?>
 
@@ -69,15 +93,15 @@ $permissionsOpen = false;
         <?= $form->field($model, 'jaasWebhookDriftTolerance')->textInput(['type' => 'number', 'min' => 0]) ?>
         <?= $form->field($model, 'jaasDomain') ?>
 
-        <div class="form-group jitsi-webhook-url-group">
+        <div class="form-group">
             <label class="control-label" for="jitsi-webhook-url"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook URL for 8x8 Console') ?></label>
             <div class="input-group">
-                <input type="text" class="form-control" id="jitsi-webhook-url" value="<?= Html::encode(Url::to(['/jitsi-meet-cloud-8x8/webhook'], true)) ?>" readonly>
+                <input type="text" id="jitsi-webhook-url" class="form-control" value="<?= Html::encode($webhookUrl) ?>" readonly>
                 <span class="input-group-btn">
                     <button
                         class="btn btn-default"
                         type="button"
-                        id="jitsi-webhook-url-copy"
+                        data-action-click="jitsiCopyWebhookUrl"
                         aria-label="<?= Yii::t('JitsiMeetCloud8x8Module.base', 'Copy webhook URL to clipboard') ?>"
                     ><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Copy') ?></button>
                 </span>
@@ -87,7 +111,7 @@ $permissionsOpen = false;
 
         <?= $form->endCollapsibleFields() ?>
 
-        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Features'), !$featuresOpen) ?>
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Features'), true) ?>
 
         <?= $form->field($model, 'jaasEnableRecording')->checkbox() ?>
         <?= $form->field($model, 'jaasEnableLivestreaming')->checkbox() ?>
@@ -105,12 +129,11 @@ $permissionsOpen = false;
         </div>
         <?php endif; ?>
         <?= $form->field($model, 'enableScheduling')->checkbox(['disabled' => !$calendarEnabled]) ?>
-
         <?= $form->field($model, 'enableTour')->checkbox() ?>
 
         <?= $form->endCollapsibleFields() ?>
 
-        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Permission Defaults'), !$permissionsOpen) ?>
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Permission Defaults'), true) ?>
 
         <div class="alert alert-warning">
             <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Security Notice:') ?></strong>
@@ -123,23 +146,8 @@ $permissionsOpen = false;
 
         <?= $form->endCollapsibleFields() ?>
 
-        <?= Button::save()->submit() ?>
-        <?php ActiveForm::end() ?>
-    </div>
-</div>
-
-<?php if ($model->mode === 'jaas'): ?>
-<?php
-$keyPath = getenv('HUMHUB_JAAS_PRIVATE_KEY_PATH') ?: $model->jaasPrivateKeyPath;
-$keyExists = !empty($keyPath) && file_exists($keyPath);
-$keyReadable = $keyExists && is_readable($keyPath);
-$keySize = ($keyExists && is_readable($keyPath)) ? @filesize($keyPath) : false;
-?>
-<div class="panel panel-info">
-    <div class="panel-heading">
-        <h4><?= Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS Debug Information') ?></h4>
-    </div>
-    <div class="panel-body">
+        <?php if ($model->mode === 'jaas'): ?>
+        <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Debug'), false) ?>
 
         <div class="row">
             <div class="col-md-6">
@@ -191,10 +199,15 @@ $keySize = ($keyExists && is_readable($keyPath)) ? @filesize($keyPath) : false;
                             <span class="label label-danger"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'No') ?></span>
                         <?php endif; ?>
                     </li>
-                    <?php if ($keySize !== false): ?>
+                    <?php if ($keyExists && $keySize !== false): ?>
                     <li>
                         <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File Size:') ?></strong>
                         <?= (int) $keySize ?> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'bytes') ?>
+                    </li>
+                    <?php elseif ($keyExists): ?>
+                    <li>
+                        <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File Size:') ?></strong>
+                        <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Unknown') ?>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -211,14 +224,18 @@ $keySize = ($keyExists && is_readable($keyPath)) ? @filesize($keyPath) : false;
 
                 <h5><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Setup Instructions') ?></h5>
                 <ol>
-                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Place your 8x8 private key file at: {path}', ['path' => '<code>' . Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') . '</code>']) ?></li>
-                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set proper permissions: {command}', ['command' => '<code>chmod 600 ' . Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') . '</code>']) ?></li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Place your 8x8 private key file at:') ?> <code><?= Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') ?></code></li>
+                    <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Set proper permissions:') ?> <code>chmod 600 <?= Html::encode($keyPath ?: '/var/www/keys/jaas_private.pem') ?></code></li>
                     <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Ensure the file owner matches the PHP process user') ?></li>
                     <li><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Test JWT generation using the button above') ?></li>
                 </ol>
             </div>
         </div>
 
+        <?= $form->endCollapsibleFields() ?>
+        <?php endif; ?>
+
+        <?= Button::save()->submit() ?>
+        <?php ActiveForm::end() ?>
     </div>
 </div>
-<?php endif; ?>

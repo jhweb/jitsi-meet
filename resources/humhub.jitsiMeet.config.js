@@ -1,66 +1,68 @@
 humhub.module('jitsiMeet.config', function (module, require, $) {
+    var action = require('action');
+    var status = require('ui.status');
 
-    var jwtFieldSelectors = [
-        '.field-settingsform-jitsiappid',
-        '.field-settingsform-jitsiappsecret'
-    ];
-
-    var jaasFieldSelectors = [
-        '.field-settingsform-jaasappid',
-        '.field-settingsform-jaaskid',
-        '.field-settingsform-jaasprivatekeypath',
-        '.field-settingsform-jaaswebhooksecret',
-        '.field-settingsform-jaaswebhookdrifttolerance',
-        '.field-settingsform-jaasdomain',
-        '.field-settingsform-jaasenablerecording',
-        '.field-settingsform-jaasenablelivestreaming',
-        '.field-settingsform-jaasenablemoderation',
-        '.jitsi-webhook-url-group'
-    ];
+    var CUSTOM_DOMAIN = '__custom__';
 
     var displayJwtParams = function () {
-        var show = $('#settingsform-enablejwt').is(':checked');
-        jwtFieldSelectors.forEach(function (selector) {
-            $(selector).toggle(show);
-        });
+        if ($('#settingsform-enablejwt').is(':checked')) {
+            $('.field-settingsform-jitsiappid').show();
+            $('.field-settingsform-jitsiappsecret').show();
+        } else {
+            $('.field-settingsform-jitsiappid').hide();
+            $('.field-settingsform-jitsiappsecret').hide();
+        }
     };
 
     var displayJaas = function () {
-        var show = $('#settingsform-mode').val() === 'jaas';
-        jaasFieldSelectors.forEach(function (selector) {
-            $(selector).toggle(show);
+        var isJaas = $('#settingsform-mode').val() === 'jaas';
+        var jaasFields = [
+            '.field-settingsform-jaasappid',
+            '.field-settingsform-jaaskid',
+            '.field-settingsform-jaasprivatekeypath',
+            '.field-settingsform-jaaswebhooksecret',
+            '.field-settingsform-jaaswebhookdrifttolerance',
+            '.field-settingsform-jaasdomain',
+            '.field-settingsform-jaasenablerecording',
+            '.field-settingsform-jaasenablelivestreaming',
+            '.field-settingsform-jaasenablemoderation'
+        ];
+
+        jaasFields.forEach(function (selector) {
+            if (isJaas) {
+                $(selector).show();
+            } else {
+                $(selector).hide();
+            }
         });
     };
 
     var toggleJitsiDomainTextInput = function () {
-        var dropdown = $('#settingsform-jitsidomain');
-        var textInput = $('.field-settingsform-jitsidomain-custom');
-        textInput.children('.control-label').detach();
-
-        if (dropdown.val() === '') {
-            textInput.show();
+        var customWrap = $('.field-settingsform-jitsidomain-custom');
+        if ($('#settingsform-jitsidomain').val() === CUSTOM_DOMAIN) {
+            customWrap.removeClass('hide').show();
         } else {
-            textInput.hide();
+            customWrap.addClass('hide').hide();
         }
     };
 
-    var disableInactiveDomainField = function () {
-        var dropdown = $('#settingsform-jitsidomain');
-        var textInputField = $('#settingsform-jitsidomain-custom');
-
-        if (dropdown.val() === '') {
-            dropdown.prop('disabled', true);
-        } else {
-            textInputField.prop('disabled', true);
-        }
+    var prepareJitsiDomainSubmit = function () {
+        var preset = $('#settingsform-jitsidomain').val();
+        var value = preset === CUSTOM_DOMAIN
+            ? $('#settingsform-jitsidomain-custom').val()
+            : preset;
+        $('#settingsform-jitsidomain-value').val(value);
     };
 
-    var copyWebhookUrl = function () {
-        var url = $('#jitsi-webhook-url').val();
-        clipboard.writeText(url).then(function () {
-            require('ui.status').success(module.text('copied'));
-        }).catch(function () {
-            require('ui.status').error(module.text('copyError'), true);
+    var registerCopyWebhookHandler = function () {
+        action.registerHandler('jitsiCopyWebhookUrl', function (evt) {
+            var url = $('#jitsi-webhook-url').val();
+            clipboard.writeText(url).then(function () {
+                status.success(module.text('webhookUrlCopied'));
+            }).catch(function () {
+                status.error(module.text('webhookUrlCopyFailed'), true);
+            });
+            evt.finish();
         });
     };
 
@@ -68,19 +70,17 @@ humhub.module('jitsiMeet.config', function (module, require, $) {
         displayJwtParams();
         displayJaas();
         toggleJitsiDomainTextInput();
+        registerCopyWebhookHandler();
 
         $(document.body).on('change', '#settingsform-enablejwt', displayJwtParams);
         $(document.body).on('change', '#settingsform-mode', displayJaas);
         $(document.body).on('change', '#settingsform-jitsidomain', toggleJitsiDomainTextInput);
-        $('#configure-form').on('submit', disableInactiveDomainField);
-        $('#jitsi-webhook-url-copy').on('click', copyWebhookUrl);
+        $('#configure-form').on('submit', prepareJitsiDomainSubmit);
     };
 
     module.export({
         init: init
     });
 
-    $(function () {
-        module.init();
-    });
+    init();
 });

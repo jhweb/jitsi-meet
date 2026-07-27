@@ -181,6 +181,37 @@ class SettingsForm extends Model
         }
     }
 
+    public function attributeLabels()
+    {
+        return [
+            'jitsiDomain' => Yii::t('JitsiMeetCloud8x8Module.base', 'Jitsi Domain'),
+            'menuTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Menu Title'),
+            'roomPrefix' => Yii::t('JitsiMeetCloud8x8Module.base', 'Room Prefix'),
+            'jitsiAppID' => Yii::t('JitsiMeetCloud8x8Module.base', 'Application ID'),
+            'jitsiAppSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Application Secret'),
+            'enableJwt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable JWT Authentication'),
+            'mode' => Yii::t('JitsiMeetCloud8x8Module.base', 'Meeting Mode'),
+            'jaasAppId' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS App ID'),
+            'jaasKid' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS API Key (kid)'),
+            'jaasPrivateKeyPath' => Yii::t('JitsiMeetCloud8x8Module.base', 'Private Key Path'),
+            'jaasWebhookSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Secret'),
+            'jaasWebhookDriftTolerance' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Drift Tolerance'),
+            'jaasDomain' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS Domain'),
+            'jaasEnableRecording' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Recording'),
+            'jaasEnableLivestreaming' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Livestreaming'),
+            'jaasEnableModeration' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Moderation'),
+            'defaultRecordingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Recording Enabled'),
+            'defaultLivestreamingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Livestreaming Enabled'),
+            'defaultModerationEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Moderation Enabled'),
+            'enableLiveStreamWidget' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Live Stream Widget'),
+            'liveStreamWidgetTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Widget Title'),
+            'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Room Name'),
+            'entriesPerPage' => Yii::t('JitsiMeetCloud8x8Module.base', 'Entries Per Page'),
+            'enableTour' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable User Guide'),
+            'enableScheduling' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Scheduling'),
+        ];
+    }
+
     public function attributeHints()
     {
         return [
