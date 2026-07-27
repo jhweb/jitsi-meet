@@ -165,16 +165,16 @@ class WebhookController extends Controller
              // We will check if secret is configured.
              $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
              if (empty($secret)) {
-                 Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
-                 return true;
+                 Yii::error('Jitsi Webhook: webhook secret is unconfigured', 'jitsi-meet-cloud-8x8');
+                 return false;
              }
              return false;
         }
 
         $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
         if (empty($secret)) {
-            Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
-            return true; 
+            Yii::error('Jitsi Webhook: webhook secret is unconfigured', 'jitsi-meet-cloud-8x8');
+            return false;
         }
 
         // Parse Header
@@ -226,7 +226,7 @@ class WebhookController extends Controller
             return true;
         }
 
-        Yii::warning("Jitsi Webhook: Signature mismatch. Expected: $expectedSignature, Got: $signature", 'jitsi-meet-cloud-8x8');
+        Yii::warning('Jitsi Webhook: signature mismatch (payload length: ' . strlen($rawBody) . ')', 'jitsi-meet-cloud-8x8');
         return false;
     }
 
