@@ -31,7 +31,7 @@ class Events
             'label' => Yii::t('JitsiMeetCloud8x8Module.base', $module->getSettingsForm()->menuTitle),
             'url' => ['/jitsi-meet-cloud-8x8/room'],
             'icon' => 'video-camera',
-            'isActive' => MenuLink::isActiveState('jitsi-meet-cloud-8x8', 'room'),
+'isActive' => MenuLink::isActiveState('jitsi-meet-cloud-8x8', 'room'),
             'sortOrder' => 400,
         ];
         

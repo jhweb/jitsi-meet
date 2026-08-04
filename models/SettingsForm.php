@@ -8,7 +8,6 @@ use yii\base\Model;
 class SettingsForm extends Model
 {
     public const DEFAULT_JITSI_DOMAINS = [
-        'meet.ffmuc.net',
         'kmeet.infomaniak.com',
         'jitsi.hamburg.ccc.de',
     ];
@@ -63,7 +62,7 @@ class SettingsForm extends Model
             ['jitsiDomain', 'string'],
             [['menuTitle', 'jitsiAppID', 'jitsiAppSecret', 'roomPrefix'], 'string'],
             ['enableJwt', 'boolean'],
-            [['jitsiAppID', 'jitsiAppSecret'], 'required', 'when' => function($model) {
+[['jitsiAppID', 'jitsiAppSecret'], 'required', 'when' => function($model) {
                 return $model->enableJwt;
             }, 'whenClient' => "function (attribute, value) {
                 return $('#settingsform-enablejwt').is(':checked');
@@ -308,7 +307,7 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableTour', (int)$this->enableTour);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableScheduling', (int)$this->enableScheduling);
 
-        $this->roomPrefix = ucwords(preg_replace("/[^A-Za-z0-9]/", '', $this->roomPrefix));
+$this->roomPrefix = ucwords((string) preg_replace("/[^A-Za-z0-9]/", '', (string) $this->roomPrefix));
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('roomPrefix', $this->roomPrefix);
 
         return true;

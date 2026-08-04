@@ -19,7 +19,6 @@ Assets::register($this);
     <div style="color:white;padding-left:12px;font-size:24px;padding-top:3px;padding-left:18px">
         <?= Html::encode($moduleLabel) ?>
         <span style="font-size:16px;"><?= Html::encode($roomName) ?></span>
-
     </div>
 </div>
 <div id="jitsiMeetD"></div>
