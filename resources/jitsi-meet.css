@@ -437,6 +437,14 @@
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    @keyframes pulse-red {
+        0%, 100% {
+            box-shadow: none;
+        }
+    }
+}
+
 /* --- Modals --- */
 
 .jitsi-modal-overrides .modal-content {
@@ -488,6 +496,23 @@
 }
 
 /* Specific Utilities */
+.jitsi-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.jitsi-empty-icon {
+    opacity: 0.3;
+    margin-bottom: 20px;
+}
+
 .pulsating-dot {
     display: inline-block;
     width: 6px;
@@ -497,6 +522,23 @@
     margin-right: 4px;
     vertical-align: middle;
     animation: blinkRed 1.5s infinite;
+}
+
+.status-badge.live .pulsating-dot {
+    /* Decorative pulse; visible LIVE label provides context for screen readers */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-action-btn.live,
+    .pulsating-dot {
+        animation: none;
+    }
+
+    @keyframes blinkRed {
+        0%, 100% {
+            opacity: 1;
+        }
+    }
 }
 
 @keyframes blinkRed {
@@ -520,33 +562,41 @@
     border: 1px solid var(--background3);
 }
 
-/* --- Delete Button (Hover Only) --- */
+/* --- Delete Button --- */
 .stream-delete-btn {
     position: absolute;
     top: 10px;
     right: 35px;
-    color: #ff0000;
+    color: var(--danger);
     cursor: pointer;
     z-index: 100;
     font-size: 14px;
     opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-    background: rgba(255, 255, 255, 0.8);
+    transition: opacity 0.2s ease-in-out, background 0.2s ease-in-out, color 0.2s ease-in-out, transform 0.2s ease-in-out;
+    background: var(--background-color-main);
     border-radius: 50%;
     width: 24px;
     height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--background3);
 }
 
-.stream-card-v2:hover .stream-delete-btn {
+.stream-card-v2:hover .stream-delete-btn,
+.stream-card-v2:focus-within .stream-delete-btn,
+.stream-delete-btn:focus,
+.stream-delete-btn:focus-visible {
     opacity: 1;
 }
 
+.stream-delete-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .stream-delete-btn:hover {
-    background: #ff0000;
+    background: var(--danger);
     color: #fff;
     transform: scale(1.1);
 }
@@ -577,5 +627,5 @@
     width: 24px;
     height: 24px;
     object-fit: cover;
-    background: #ccc;
+    background: var(--background3);
 }
