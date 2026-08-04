@@ -1,7 +1,7 @@
 {
   "id": "jitsi-meet-cloud-8x8",
   "name": "Jitsi Meet Cloud (8x8 JaaS)",
-  "description": "Video conferencing with 8x8 JaaS cloud integration - secure, scalable, enterprise-ready.",
+  "description": "Video conferencing with 8x8 JaaS cloud integration - secure, scalable, enterprise-ready. AGPL-3.0; derived from humhub-contrib/jhweb jitsi-meet.",
   "keywords": [
     "video",
     "conference",
@@ -10,7 +10,7 @@
     "jaas",
     "cloud"
   ],
-  "version": "1.2.1",
+  "version": "1.2.3",
   "humhub": {
     "minVersion": "1.7"
   },
