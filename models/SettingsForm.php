@@ -78,7 +78,7 @@ class SettingsForm extends Model
             [['enableTour', 'enableScheduling'], 'boolean'],
             
             // JaaS mode validation
-            [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath'], 'required', 'when' => function($model) {
+            [['jaasAppId', 'jaasKid', 'jaasPrivateKeyPath', 'jaasWebhookSecret'], 'required', 'when' => function($model) {
                 return $model->mode === 'jaas';
             }, 'whenClient' => "function (attribute, value) {
                 return $('#settingsform-mode').val() === 'jaas';
