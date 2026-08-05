@@ -11,13 +11,15 @@ Environment notes:
 
 ## Child 3 — Webhook fail-closed and required secret
 
-- [ ] Valid signature from `tools/webhook-sign.php` returns HTTP 200
-- [ ] `--tamper` returns 401/403
-- [ ] `--stale` is rejected (outside drift window)
-- [ ] With `jaasWebhookSecret` cleared in settings, every POST is rejected
-- [ ] No signature value appears in Administration > Information > Logging
-- [ ] Settings form requires `jaasWebhookSecret` when `mode === 'jaas'`
-- [ ] Config view shows warning when JaaS mode has empty webhook secret
+Verified 2026-08-05 on local Docker (HumHub 1.17.1), branch `fix/security-webhook-failclosed` after merging upstream/master → jitsi-meet-improved → this branch.
+
+- [x] Valid signature from `tools/webhook-sign.php` returns HTTP 200
+- [x] `--tamper` returns 401/403 (401)
+- [x] `--stale` is rejected (outside drift window) — 401, drift default 300s
+- [x] With `jaasWebhookSecret` cleared in settings, every POST is rejected (unsigned + valid-signed both 401)
+- [x] No expected-signature oracle in Administration > Information > Logging (search "Expected" = 0; only "signature mismatch (payload length: N)"). Caveat: HumHub core `$_SERVER` debug dump logs the *received* signature when `HUMHUB_DEBUG=1` (not present with debug off).
+- [~] Settings form requires `jaasWebhookSecret` when `mode === 'jaas'` — model rule present, but `ConfigController` skips `$form->validate()` on save (medium; empty secret can still persist). Runtime stays fail-closed.
+- [x] Config view shows warning when JaaS mode has empty webhook secret (amber dismissible banner, screenshot-verified)
 
 ## Child 4 — JWT server-side only and moderator cache key
 
