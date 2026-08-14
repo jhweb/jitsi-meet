@@ -10,6 +10,9 @@ use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\JoinVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\ManageRecordings;
 use humhub\modules\content\models\Content;
 use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
@@ -34,6 +37,10 @@ class RoomController extends Controller
         return [
             ['permissions' => [CanAccess::class], 'actions' => ['index']],
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
+            ['permissions' => [CreateVideoChat::class], 'actions' => ['create']],
+            ['permissions' => [JoinVideoChat::class], 'actions' => ['open', 'modal']],
+            // details: ManageRecordings is enforced in actionDetails together with creator/container checks
+            ['login', 'actions' => ['details']],
         ];
     }
 
@@ -91,6 +98,10 @@ class RoomController extends Controller
     {
         $model = new JoinRoomForm();
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if (!Yii::$app->user->can(CreateVideoChat::class)) {
+                throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to create video chats.'));
+            }
+
             $rawTitle = $model->room;
             $fixedName = $this->fixRoomName($rawTitle);
             
@@ -106,7 +117,7 @@ class RoomController extends Controller
 
             // Cache Space ID for Webhook to pick up
             if (!empty($model->targetContainer)) {
-                $container = ContentContainer::findRecord($model->targetContainer);
+                $container = $this->resolveAllowedContainer($model->targetContainer);
                 if ($container instanceof Space) {
                     $spaceKey = 'jitsiMeetCloud8x8:roomSpaceId:' . strtolower($fixedName);
                     Yii::$app->cache->set($spaceKey, $container->id, 3600);
@@ -378,11 +389,11 @@ class RoomController extends Controller
                         $targetGuid = Yii::$app->request->post('target_calendar');
                         $container = null;
                         if ($targetGuid) {
-                            $container = ContentContainer::findRecord($targetGuid);
+                            $container = $this->resolveAllowedContainer($targetGuid);
                         }
                         
                         // Check if Space and save space_id
-                        if ($container instanceof \humhub\modules\space\models\Space) {
+                        if ($container instanceof Space) {
                              $model->space_id = $container->id;
                              $model->save();
                         }
@@ -654,6 +665,10 @@ class RoomController extends Controller
         $stream = JitsiLiveStream::findOne($id);
         if (!$stream) {
             throw new \yii\web\NotFoundHttpException();
+        }
+
+        if (!$this->canAccessStreamDetails($stream)) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
         }
 
         $chatMessages = [];
@@ -996,6 +1011,75 @@ class RoomController extends Controller
             'roomUrlSilent' => $roomUrlSilent,
             'dialInNumbersUrl' => $dialInNumbersUrl,
         ]);
+    }
+
+    /**
+     * Resolves a container GUID the current user may attach content to.
+     * Returns null when $guid is empty (caller should fall back to own profile).
+     *
+     * @throws \yii\web\ForbiddenHttpException
+     */
+    private function resolveAllowedContainer(string $guid)
+    {
+        $user = Yii::$app->user->getIdentity();
+        if (!$user) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+        }
+
+        if ($guid === $user->contentContainerRecord->guid) {
+            return $user;
+        }
+
+        $container = ContentContainer::findRecord($guid);
+        if (!$container) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+        }
+
+        if ($container instanceof Space) {
+            if (!$container->isMember($user)) {
+                throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+            }
+            return $container;
+        }
+
+        if ($container instanceof \humhub\modules\user\models\User) {
+            if ((int) $container->id === (int) $user->id) {
+                return $container;
+            }
+        }
+
+        throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+    }
+
+    /**
+     * Stream details (recordings, chat logs, transcripts) require creator,
+     * membership in the associated space container, or ManageRecordings.
+     */
+    private function canAccessStreamDetails(JitsiLiveStream $stream): bool
+    {
+        if (Yii::$app->user->isGuest) {
+            return false;
+        }
+
+        $user = Yii::$app->user->getIdentity();
+
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        if ((int) $stream->creator_id === (int) $user->id) {
+            return true;
+        }
+
+        if (Yii::$app->user->can(ManageRecordings::class)) {
+            return true;
+        }
+
+        if ($stream->space_id && $stream->space && $stream->space->isMember($user)) {
+            return true;
+        }
+
+        return false;
     }
 
     private function ensureRoomCreator($roomName, $user)
