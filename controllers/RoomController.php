@@ -6,10 +6,15 @@ use Firebase\JWT\JWT;
 use humhub\components\Controller;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JoinRoomForm;
 use humhubContrib\modules\jitsiMeetCloud8x8\Module;
+use humhubContrib\modules\jitsiMeetCloud8x8\components\AllowlistedHttpFetcher;
 use humhubContrib\modules\jitsiMeetCloud8x8\components\JaasJwtService;
+use yii\helpers\Html;
 use humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLiveStream;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanAccess;
 use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CanSchedule;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\CreateVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\JoinVideoChat;
+use humhubContrib\modules\jitsiMeetCloud8x8\permissions\ManageRecordings;
 use humhub\modules\content\models\Content;
 use humhub\modules\calendar\models\CalendarEntryParticipant;
 use humhub\modules\content\models\ContentContainer;
@@ -34,6 +39,10 @@ class RoomController extends Controller
         return [
             ['permissions' => [CanAccess::class], 'actions' => ['index']],
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
+            ['permissions' => [CreateVideoChat::class], 'actions' => ['create']],
+            ['permissions' => [JoinVideoChat::class], 'actions' => ['open', 'modal']],
+            // details: ManageRecordings is enforced in actionDetails together with creator/container checks
+            ['login', 'actions' => ['details']],
         ];
     }
 
@@ -91,6 +100,10 @@ class RoomController extends Controller
     {
         $model = new JoinRoomForm();
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            if (!Yii::$app->user->can(CreateVideoChat::class)) {
+                throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to create video chats.'));
+            }
+
             $rawTitle = $model->room;
             $fixedName = $this->fixRoomName($rawTitle);
             
@@ -106,7 +119,7 @@ class RoomController extends Controller
 
             // Cache Space ID for Webhook to pick up
             if (!empty($model->targetContainer)) {
-                $container = ContentContainer::findRecord($model->targetContainer);
+                $container = $this->resolveAllowedContainer($model->targetContainer);
                 if ($container instanceof Space) {
                     $spaceKey = 'jitsiMeetCloud8x8:roomSpaceId:' . strtolower($fixedName);
                     Yii::$app->cache->set($spaceKey, $container->id, 3600);
@@ -378,11 +391,11 @@ class RoomController extends Controller
                         $targetGuid = Yii::$app->request->post('target_calendar');
                         $container = null;
                         if ($targetGuid) {
-                            $container = ContentContainer::findRecord($targetGuid);
+                            $container = $this->resolveAllowedContainer($targetGuid);
                         }
                         
                         // Check if Space and save space_id
-                        if ($container instanceof \humhub\modules\space\models\Space) {
+                        if ($container instanceof Space) {
                              $model->space_id = $container->id;
                              $model->save();
                         }
@@ -656,13 +669,18 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException();
         }
 
+        if (!$this->canAccessStreamDetails($stream)) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
+        }
+
+        $fetchWarnings = [];
         $chatMessages = [];
         if (!empty($stream->chat_log_url)) {
-            // Fetch chat log with a 5-second timeout
-            $context = stream_context_create(['http' => ['timeout' => 5]]); 
-            $content = @file_get_contents($stream->chat_log_url, false, $context);
-            
-            if ($content !== false) {
+            $fetchResult = AllowlistedHttpFetcher::fetch($stream->chat_log_url);
+            if (!$fetchResult['ok']) {
+                $this->recordFetchRejection($fetchResult, 'chat_log', $fetchWarnings);
+            } else {
+                $content = $fetchResult['content'];
                 // Check for GZIP magic bytes (1f 8b)
                 if (strlen($content) >= 2 && ord($content[0]) == 0x1f && ord($content[1]) == 0x8b) {
                     $decoded = @gzdecode($content);
@@ -670,15 +688,21 @@ class RoomController extends Controller
                         $content = $decoded;
                     }
                 }
-                
+
                 $data = json_decode($content, true);
                 if (is_array($data)) {
                     // Try to find the messages array
                     $candidates = [$data]; // start with root
-                    if (isset($data['messages'])) $candidates[] = $data['messages'];
-                    if (isset($data['data'])) $candidates[] = $data['data'];
-                    if (isset($data['payload'])) $candidates[] = $data['payload'];
-                    
+                    if (isset($data['messages'])) {
+                        $candidates[] = $data['messages'];
+                    }
+                    if (isset($data['data'])) {
+                        $candidates[] = $data['data'];
+                    }
+                    if (isset($data['payload'])) {
+                        $candidates[] = $data['payload'];
+                    }
+
                     foreach ($candidates as $cand) {
                         if (is_array($cand) && count($cand) > 0) {
                             // Relaxed Heuristic: accept array if it looks list-like (indexed keys) or first element is array
@@ -696,18 +720,25 @@ class RoomController extends Controller
 
         $screenSharingContent = [];
         if (!empty($stream->screen_sharing_url)) {
-            $context = stream_context_create(['http' => ['timeout' => 3]]);
-            $content = @file_get_contents($stream->screen_sharing_url, false, $context);
-            if ($content !== false) {
-                $screenSharingContent = json_decode($content, true);
+            $fetchResult = AllowlistedHttpFetcher::fetch($stream->screen_sharing_url, AllowlistedHttpFetcher::DEFAULT_MAX_BYTES, 3);
+            if (!$fetchResult['ok']) {
+                $this->recordFetchRejection($fetchResult, 'screen_sharing', $fetchWarnings);
+            } else {
+                $screenSharingContent = json_decode($fetchResult['content'], true);
             }
         }
 
-        return $this->renderAjax('modal_details', [
+        $html = $this->renderAjax('modal_details', [
             'stream' => $stream,
             'chatMessages' => $chatMessages,
-            'screenSharingContent' => $screenSharingContent
+            'screenSharingContent' => $screenSharingContent,
         ]);
+
+        if (!empty($fetchWarnings) && Yii::$app->user->isAdmin()) {
+            $html = $this->injectFetchWarningsNotice($html, $fetchWarnings);
+        }
+
+        return $html;
     }
 
     /**
@@ -996,6 +1027,119 @@ class RoomController extends Controller
             'roomUrlSilent' => $roomUrlSilent,
             'dialInNumbersUrl' => $dialInNumbersUrl,
         ]);
+    }
+
+    /**
+     * Resolves a container GUID the current user may attach content to.
+     * Returns null when $guid is empty (caller should fall back to own profile).
+     *
+     * @throws \yii\web\ForbiddenHttpException
+     */
+    private function resolveAllowedContainer(string $guid)
+    {
+        $user = Yii::$app->user->getIdentity();
+        if (!$user) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+        }
+
+        if ($guid === $user->contentContainerRecord->guid) {
+            return $user;
+        }
+
+        $container = ContentContainer::findRecord($guid);
+        if (!$container) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+        }
+
+        if ($container instanceof Space) {
+            if (!$container->isMember($user)) {
+                throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+            }
+            return $container;
+        }
+
+        if ($container instanceof \humhub\modules\user\models\User) {
+            if ((int) $container->id === (int) $user->id) {
+                return $container;
+            }
+        }
+
+        throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to use this container.'));
+    }
+
+    /**
+     * Stream details (recordings, chat logs, transcripts) require creator,
+     * membership in the associated space container, or ManageRecordings.
+     */
+    private function canAccessStreamDetails(JitsiLiveStream $stream): bool
+    {
+        if (Yii::$app->user->isGuest) {
+            return false;
+        }
+
+        $user = Yii::$app->user->getIdentity();
+
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        if ((int) $stream->creator_id === (int) $user->id) {
+            return true;
+        }
+
+        if (Yii::$app->user->can(ManageRecordings::class)) {
+            return true;
+        }
+
+        if ($stream->space_id && $stream->space && $stream->space->isMember($user)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Log and collect a safe admin notice when an outbound fetch is rejected.
+     *
+     * @param array{ok: bool, host: string|null, reason: string|null} $fetchResult
+     * @param string[] $fetchWarnings
+     */
+    private function recordFetchRejection(array $fetchResult, string $resource, array &$fetchWarnings): void
+    {
+        $host = $fetchResult['host'] ?? 'unknown';
+        Yii::warning(
+            'Outbound fetch rejected for stream metadata (' . $resource . '): host=' . $host
+            . ', reason=' . ($fetchResult['reason'] ?? 'unknown'),
+            'jitsi-meet-cloud-8x8'
+        );
+
+        $fetchWarnings[] = Yii::t(
+            'JitsiMeetCloud8x8Module.base',
+            'Could not load {resource} from host {host}. The URL was blocked by the outbound fetch allowlist.',
+            ['resource' => $resource, 'host' => $host]
+        );
+    }
+
+    /**
+     * Inject admin-facing fetch warnings into rendered modal HTML without editing the view file.
+     *
+     * @param string[] $fetchWarnings
+     */
+    private function injectFetchWarningsNotice(string $html, array $fetchWarnings): string
+    {
+        $items = '';
+        foreach ($fetchWarnings as $warning) {
+            $items .= '<li>' . Html::encode($warning) . '</li>';
+        }
+
+        $notice = '<div class="alert alert-warning" role="alert">'
+            . '<strong>' . Html::encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Outbound fetch blocked')) . '</strong>'
+            . '<ul style="margin-bottom:0;">' . $items . '</ul>'
+            . '</div>';
+
+        $replaced = preg_replace('/(<div class="modal-body">)/', '$1' . $notice, $html, 1);
+
+        return is_string($replaced) ? $replaced : $html;
     }
 
     private function ensureRoomCreator($roomName, $user)
