@@ -6,9 +6,7 @@ use yii\web\AssetBundle;
 
 class ConfigAssets extends AssetBundle
 {
-    public $publishOptions = [
-        'forceCopy' => true
-    ];
+    public $publishOptions = [];
 
     public $js = [
         'humhub.jitsiMeet.config.js'
@@ -17,6 +15,9 @@ class ConfigAssets extends AssetBundle
     public function init()
     {
         $this->sourcePath = dirname(__FILE__) . '/../resources';
+        if (YII_DEBUG) {
+            $this->publishOptions['forceCopy'] = true;
+        }
         parent::init();
     }
 }

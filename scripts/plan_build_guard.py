@@ -1,0 +1,1 @@
+/Volumes/devnvme/Development/BRAIN_MCP_HUB/scripts/plan_build_guard.py
