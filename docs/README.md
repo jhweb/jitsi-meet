@@ -1,12 +1,10 @@
-# Jitsi Meet
+# Documentation
 
-Secure, fully featured, and completely free video conferencing.
+User-facing documentation lives in the [root README](../README.md).
 
-Jitsi Meet is a fully encrypted, 100% open source video conferencing solution that you can use all day, every day, for free — with no account needed.
-
-- No client software necessary, just pick a name for your room and you are ready to go
-- Contacts can join via Brower or dial in via phone
-- Screensharing makes your presentation easy
-- Use a Jitsi server from a list, or use your own for additional privacy
-
-See (https://meet.jit.si/) for more details.
+| Document | Description |
+|----------|-------------|
+| [INSTALLATION.md](INSTALLATION.md) | CSP and server configuration |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and breaking changes |
+| [QA/manual-verification.md](QA/manual-verification.md) | Manual test checklist (QA staging) |
+| [LICENCE.md](LICENCE.md) | AGPL-3.0 full text (canonical copy also at [../LICENSE](../LICENSE)) |

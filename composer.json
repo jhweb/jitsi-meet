@@ -3,7 +3,7 @@
     "description": "HumHub Jitsi Meet module with 8x8 JaaS integration. AGPL-3.0; derived from humhub-contrib/jhweb jitsi-meet.",
     "type": "library",
     "require": {
-        "php": ">=7.4",
+        "php": ">=8.1",
         "firebase/php-jwt": "^6.9"
     },
     "autoload": {
