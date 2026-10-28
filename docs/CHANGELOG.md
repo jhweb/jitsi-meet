@@ -1,6 +1,15 @@
 Changelog
 =========
 
+1.2.3 (Unreleased)
+--------------------
+- Fix #55: Remove `meet.ffmuc.net` server ([not embeddable anymore](https://ffmuc.net/freifunk/infrastruktur/community/2026/03/19/iframe-embedding-einschraenkungen/#en))
+
+1.2.2 (July 8, 2026)
+--------------------
+- Fix #49: "Open in new window?" not working on mobile app
+- Fix #54: Remove deprecations
+
 1.2.1 (October 13, 2025)
 ------------------------
 - Enh #45: Replace default meet.jit.si server domain (which has issues for the microphone and camera with the mobile app), with a list of popular ones

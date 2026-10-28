@@ -31,17 +31,24 @@ $filter = Yii::$app->request->get('filter', 'all');
     <!-- Filter & Action Bar -->
     <div class="jitsi-filter-bar">
         <div class="jitsi-filters">
-            <a href="<?= Url::to(['index', 'filter' => 'all', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'all' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'all', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'all' ? 'active' : '' ?>"<?= $filter === 'all' ? ' aria-current="page"' : '' ?>>
                 <i class="fa fa-th-large"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'All Streams') ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'live', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'live' ? 'active' : '' ?>">
-                <i class="fa fa-dot-circle-o" style="<?= $filter === 'live' ? '' : 'color: var(--jitsi-live);' ?>"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live Now') ?>
+            <a href="<?= Url::to(['index', 'filter' => 'live', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'live' ? 'active' : '' ?>"<?= $filter === 'live' ? ' aria-current="page"' : '' ?>>
+                <i class="fa fa-dot-circle-o" style="<?= $filter === 'live' ? '' : 'color: var(--danger);' ?>" aria-hidden="true"></i>
+                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live Now') ?>
+                <?php if (!empty($activeStreams)): ?>
+                    <span class="jitsi-sr-only"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Live streams available') ?></span>
+                <?php endif; ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'scheduled', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'scheduled' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'scheduled', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'scheduled' ? 'active' : '' ?>"<?= $filter === 'scheduled' ? ' aria-current="page"' : '' ?>>
                 <i class="fa fa-calendar"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Scheduled') ?>
             </a>
-            <a href="<?= Url::to(['index', 'filter' => 'ended', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'ended' ? 'active' : '' ?>">
+            <a href="<?= Url::to(['index', 'filter' => 'ended', 'space_id' => $filterSpaceId, 'creator_id' => $filterCreatorId]) ?>" class="jitsi-filter-btn <?= $filter === 'ended' ? 'active' : '' ?>"<?= $filter === 'ended' ? ' aria-current="page"' : '' ?>>
                 <i class="fa fa-history"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Ended') ?>
+            </a>
+            <a href="#" id="jitsi-guide-button" class="jitsi-filter-btn" title="<?= Html::encode(Yii::t('JitsiMeetCloud8x8Module.base', 'Restart tour')) ?>">
+                <i class="fa fa-question-circle"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Guide') ?>
             </a>
         </div>
 
@@ -91,7 +98,7 @@ $filter = Yii::$app->request->get('filter', 'all');
         </script>
         <?php endif; ?>
 
-        <div class="jitsi-actions">
+        <div id="jitsi-join-panel" class="jitsi-actions">
             <?php if ($canSchedule): ?>
                 <?= ModalButton::primary('<i class="fa fa-calendar-plus-o"></i> ' . Yii::t('JitsiMeetCloud8x8Module.base', 'Schedule Stream'))
                     ->load(Url::to(['schedule']))
@@ -106,40 +113,54 @@ $filter = Yii::$app->request->get('filter', 'all');
 
     <!-- Stats / Info (Optional, skipping for now based on mockup) -->
 
-    <!-- Live Streams Grid -->
-    <div class="live-stream-grid">
-        <?php 
-        // Filter Logic in View
-        $streamsToShow = [];
-        
-        if ($filter === 'all') {
-            // Merge streams order: Active -> Scheduled -> Ended
-            // Note: Controller returns Active separate from Scheduled, but logical display might be Live -> Scheduled -> Ended
-            // Important: We need to respect the controller's pagination for 'endedStreams'.
-            $streamsToShow = array_merge(
-                $activeStreams,
-                $scheduledStreams,
-                $endedStreams
-            );
-        } elseif ($filter === 'live') {
-            $streamsToShow = $activeStreams;
-        } elseif ($filter === 'scheduled') {
-            $streamsToShow = $scheduledStreams;
-        } elseif ($filter === 'ended') {
-            $streamsToShow = $endedStreams; // This is paginated from controller
-        }
+    <?php
+    $activeGridStreams = [];
+    $endedGridStreams = [];
 
-        if (empty($streamsToShow)): ?>
+    if ($filter === 'all') {
+        $activeGridStreams = array_merge($activeStreams, $scheduledStreams);
+        $endedGridStreams = $endedStreams;
+    } elseif ($filter === 'live') {
+        $activeGridStreams = $activeStreams;
+    } elseif ($filter === 'scheduled') {
+        $activeGridStreams = $scheduledStreams;
+    } elseif ($filter === 'ended') {
+        $endedGridStreams = $endedStreams;
+    }
+
+    $showActiveGrid = ($filter !== 'ended');
+    $showEndedGrid = ($filter === 'all' || $filter === 'ended');
+    ?>
+
+    <?php if ($showActiveGrid): ?>
+    <div id="jitsi-active-grid" class="live-stream-grid">
+        <?php if (empty($activeGridStreams)): ?>
             <div class="col-md-12 text-center text-muted" style="grid-column: 1 / -1; padding: 40px;">
-                <i class="fa fa-film fa-3x" style="opacity: 0.3; margin-bottom: 20px;"></i><br>
+                <i class="fa fa-film fa-3x jitsi-empty-icon" aria-hidden="true"></i><br>
                 <?= Yii::t('JitsiMeetCloud8x8Module.base', 'No streams found.') ?>
             </div>
         <?php else: ?>
-            <?php foreach ($streamsToShow as $stream): ?>
+            <?php foreach ($activeGridStreams as $stream): ?>
                 <?= $this->render('_stream_card', ['stream' => $stream]) ?>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
+
+    <?php if ($showEndedGrid): ?>
+    <div id="jitsi-ended-grid" class="live-stream-grid">
+        <?php if (empty($endedGridStreams)): ?>
+            <div class="col-md-12 text-center text-muted" style="grid-column: 1 / -1; padding: 40px;">
+                <i class="fa fa-history fa-3x jitsi-empty-icon" aria-hidden="true"></i><br>
+                <?= Yii::t('JitsiMeetCloud8x8Module.base', 'No streams found.') ?>
+            </div>
+        <?php else: ?>
+            <?php foreach ($endedGridStreams as $stream): ?>
+                <?= $this->render('_stream_card', ['stream' => $stream]) ?>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
         
     <!-- Pagination (Only shows if there are pages, usually tied to Ended streams) -->
     <?php if ($pages->pageCount > 1 && ($filter === 'all' || $filter === 'ended')): ?>
