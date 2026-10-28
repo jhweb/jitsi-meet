@@ -2,7 +2,7 @@
 
 Release gate for Jitsi module hardening v1.3.0. Records local Docker acceptance criteria for Children 3–9 (all merged into `jitsi-meet-improved`) and staging outcomes for Child 10.
 
-**Last updated:** 2026-10-28  
+**Last updated:** 2026-10-29  
 **Target integration branch:** `jitsi-meet-improved`  
 **Merge target:** `jitsi-meet-improved` → `feature/stream-space-association` → tag `v1.3.0`
 
@@ -27,6 +27,8 @@ Release gate for Jitsi module hardening v1.3.0. Records local Docker acceptance 
 - [ ] Staging `index.php` / environment has `YII_DEBUG` / `HUMHUB_DEBUG` disabled (`false` / `0`)
 - [ ] Staging → Administration → Modules → Jitsi Meet → Configuration: `jaasWebhookSecret` is non-empty
 - [ ] Secret value matches the secret configured in the 8x8 JaaS webhook endpoint
+- [ ] JaaS private key stored outside the webroot, mode `0600`, readable by the PHP user
+- [ ] After upload to `protected/modules/jitsi-meet-cloud-8x8`: cache flushed, and `assets/` + `protected/runtime/` owned by the PHP user (stale root-owned asset folders caused a 500 on dev)
 - [ ] Operator sign-off recorded below before any staging deploy of fail-closed code
 
 | Field | Value |
@@ -40,7 +42,9 @@ Release gate for Jitsi module hardening v1.3.0. Records local Docker acceptance 
 
 ## Merged PR index into `jitsi-meet-improved`
 
-All Children 1–9 are merged into `jitsi-meet-improved` and verified in local HumHub 1.17.1 Docker:
+All Children 1–9 are merged into `jitsi-meet-improved` (`db066ea`). Children 3, 5, 6, 7 and 9 were exercised in local HumHub 1.17.1 Docker; rows marked 🔍 under Children 4, 7 and 8 are code-verified only and must be exercised on staging.
+
+Known CI noise: the `PHP CS Fixer` workflow fails on every push with `Command "fixer" is not defined`. The failure comes from the upstream reusable workflow `humhub/module-coding-standards`, not from module code, and does not block this gate.
 
 | Order | PR | Branch | Child | Status |
 |---|---|---|---|---|
@@ -54,7 +58,7 @@ All Children 1–9 are merged into `jitsi-meet-improved` and verified in local H
 | 8 | [#17](https://github.com/jhweb/jitsi-meet/pull/17) | `feat/room-ui-a11y` | 8 — Room UI a11y | ✅ MERGED |
 | 9 | [#16](https://github.com/jhweb/jitsi-meet/pull/16) | `docs/repo-packaging` | 9 — Packaging & docs | ✅ MERGED |
 
-**Legend:** ✅ PASS · ⬜ not yet run on staging · 🚫 staging only (human)
+**Legend:** ✅ PASS (exercised live) · 🔍 code-verified only, live re-test on staging · ⬜ not yet run on staging · 🚫 staging only (human)
 
 ---
 
@@ -88,22 +92,26 @@ All Children 1–9 are merged into `jitsi-meet-improved` and verified in local H
 
 **PR:** [#12](https://github.com/jhweb/jitsi-meet/pull/12) · **Branch:** `fix/security-jwt-server-side` (MERGED)
 
-### Local Docker (verified 2026-08-04)
+### Code review on `jitsi-meet-improved` (2026-10-29)
+
+No live browser run is recorded for these criteria, so they are code-verified only and must be exercised on staging.
 
 | Criterion | Status | Notes |
 |---|---|---|
-| Module logs contain no JWT material (redacted to `present(len)` / `absent`) | ✅ PASS | Console/log redact landed on #12 |
-| Opening a room shows no `jwt=` in Network tab or address bar | ✅ PASS | Minted in `actionModal` only |
-| `TestRoom` and `testroom` resolve to one moderator | ✅ PASS | Normalized via `strtolower()` |
-| Logged-out user hitting open URL redirected to login | ✅ PASS | `loginRequired()` enforced |
-| Legacy `vpaas-magic-cookie` redirects still work | ✅ PASS | Redirects without leaking JWT in URL |
+| Module logs contain no JWT material (redacted to `present(len)` / `absent`) | 🔍 | Redaction landed on #12 |
+| Opening a room shows no `jwt=` in Network tab or address bar | 🔍 | JWT is passed only to `RoomWidget` inside `actionModal`; no `jwt=` query string in module PHP/JS |
+| `TestRoom` and `testroom` resolve to one moderator | 🔍 | `roomCreator` cache key uses `strtolower($roomName)` |
+| Logged-out user hitting open URL redirected to login | 🔍 | `isGuest` → `loginRequired()` in `RoomController` |
+| Legacy `vpaas-magic-cookie` redirects still work | 🔍 | Not exercised; re-test on staging |
+| Security review of the #12 diff recorded | ⬜ | `c4-security-review` was never recorded in the Child 4 plan; required before release |
 
 ### Staging
 
 | Criterion | Status | Notes |
 |---|---|---|
 | No JWT in address bar, Network tab, or server access logs | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
-| Moderator cache key consistent under mixed-case room names | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
+| Moderator cache key consistent under mixed-case room names (two accounts) | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
+| Logged-out user redirected to login; legacy `vpaas-magic-cookie` URLs redirect | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
 
 ---
 
@@ -161,7 +169,7 @@ All Children 1–9 are merged into `jitsi-meet-improved` and verified in local H
 | Saving in both modes persists and validates (`$form->validate()`) | ✅ PASS | Verified in HumHub 1.17.1 container (`66edd79`, `9e5ee51`) |
 | Switching mode shows/hides self-hosted, JaaS, and Debug groups with no console errors | ✅ PASS | Verified via Cursor browser CDP (`displayJaas`) |
 | Custom-domain input hides when preset domain chosen (BS3 `.hide`, not `d-none`) | ✅ PASS | Verified via Cursor browser CDP (`toggleJitsiDomainTextInput`) |
-| Copy works with strict CSP (`ClipboardJsAsset` + `data-action-click`) | ✅ PASS | Verified in `views/config/index.php` and `humhub.jitsiMeet.config.js` |
+| Copy works with strict CSP (`ClipboardJsAsset` + `data-action-click`) | 🔍 | Wiring present in `views/config/index.php` and `humhub.jitsiMeet.config.js`; click not exercised |
 | Page renders correctly on HumHub 1.17 (Bootstrap 3 markup) | ✅ PASS | Screenshot verified on `http://localhost:9091/jitsi-meet-cloud-8x8/config/index` |
 
 ### Staging
@@ -176,21 +184,22 @@ All Children 1–9 are merged into `jitsi-meet-improved` and verified in local H
 
 **PR:** [#17](https://github.com/jhweb/jitsi-meet/pull/17) · **Branch:** `feat/room-ui-a11y` (MERGED)
 
-### Local Docker (verified 2026-08-04)
+### Code review on `jitsi-meet-improved` (2026-10-29)
 
 | Criterion | Status | Notes |
 |---|---|---|
-| Tour visits every intended element | ✅ PASS | Verified on #17 |
-| Delete control reachable and operable by keyboard with visible focus ring | ✅ PASS | Verified on #17 |
-| No `console.log` remains in module JS | ✅ PASS | Verified on #17 |
-| Animations stop under `prefers-reduced-motion` | ✅ PASS | Verified on #17 |
-| All modals still close on HumHub 1.17 (`data-dismiss` unchanged) | ✅ PASS | Verified on #17 |
+| No `console.log` remains in module JS | ✅ PASS | `rg console.log resources/` returns nothing |
+| Animations stop under `prefers-reduced-motion` | 🔍 | Two `@media (prefers-reduced-motion: reduce)` blocks in `resources/jitsi-meet.css` |
+| All modals still close on HumHub 1.17 (`data-dismiss` unchanged) | 🔍 | `data-dismiss` present in config, event, schedule, and details views |
+| Tour visits every intended element | 🔍 | Not exercised in a browser |
+| Delete control reachable and operable by keyboard with visible focus ring | 🔍 | Not exercised in a browser |
 
 ### Staging
 
 | Criterion | Status | Notes |
 |---|---|---|
-| Tour and keyboard a11y verified on staging | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
+| Tour visits every element; delete control keyboard-operable with visible focus ring | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
+| Reduced-motion (OS setting on) stops animations; all modals close | ⬜ | 🚫 **requires human operator — do not auto-deploy** |
 
 ---
 
