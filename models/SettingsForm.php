@@ -321,7 +321,6 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasPrivateKeyPath', $this->jaasPrivateKeyPath);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasWebhookSecret', $this->jaasWebhookSecret);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
-        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableRecording', (int)$this->jaasEnableRecording);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableLivestreaming', (int)$this->jaasEnableLivestreaming);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableModeration', (int)$this->jaasEnableModeration);
@@ -334,7 +333,6 @@ class SettingsForm extends Model
 
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableLiveStreamWidget', (int)$this->enableLiveStreamWidget);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamWidgetTitle', $this->liveStreamWidgetTitle);
-        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('entriesPerPage', (int)$this->entriesPerPage);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableTour', (int)$this->enableTour);
