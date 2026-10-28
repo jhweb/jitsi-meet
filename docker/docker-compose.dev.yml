@@ -1,0 +1,80 @@
+# Local HumHub 1.17 + MariaDB for jitsi-meet-cloud-8x8 module development.
+#
+# Pin 1.17 deliberately — matches production. Do not use stable-nightly or 1.18.
+#
+# Image note: Docker Hub has no `humhub/humhub:1.17` (official `humhub/humhub`
+# starts at 1.18). This stack uses `mriedmann/humhub:1.17.1`, the maintained
+# all-in-one image that still ships HumHub 1.17.x.
+#
+# Config/uploads/db use named volumes. On Docker Desktop for Mac, bind-mounted
+# files often appear as root:root inside the container and PHP is_writable()
+# fails on config/dynamic.php; host-bind mysql-data also proved unstable.
+# Module source and the JaaS key remain bind-mounted (read/write and :ro).
+services:
+  humhub:
+    image: mriedmann/humhub:1.17.1
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "9091:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - humhub-config:/var/www/localhost/htdocs/protected/config
+      - humhub-uploads:/var/www/localhost/htdocs/uploads
+      # Fix named-volume ownership before nginx/php-fpm start.
+      - ./entrypoint.d/40-fix-perms.sh:/docker-entrypoint.d/40-fix-perms.sh:ro
+      # Module bind-mount — path confirmed against the running 1.17.1 container:
+      # /var/www/localhost/htdocs/protected/modules/jitsi-meet-cloud-8x8
+      - ../:/var/www/localhost/htdocs/protected/modules/jitsi-meet-cloud-8x8
+      - ./keys/jaas_private.pem:/var/www/keys/jaas_private.pem:ro
+    environment:
+      HUMHUB_DEBUG: "1"
+      HUMHUB_PROTO: "http"
+      HUMHUB_HOST: "localhost:9091"
+      HUMHUB_DB_HOST: "db"
+      HUMHUB_DB_NAME: "humhub"
+      HUMHUB_DB_USER: "humhub"
+      HUMHUB_DB_PASSWORD: "humhub"
+      # Auto-install on first boot (admin: humhub / humhub)
+      HUMHUB_AUTO_INSTALL: "1"
+      HUMHUB_ADMIN_LOGIN: "humhub"
+      HUMHUB_ADMIN_PASSWORD: "humhub"
+      HUMHUB_ADMIN_EMAIL: "admin@localhost.local"
+      HUMHUB_JAAS_PRIVATE_KEY_PATH: "/var/www/keys/jaas_private.pem"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+  db:
+    image: mariadb:10.6
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=256M
+      - --wait_timeout=28800
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "humhub-root"
+      MYSQL_DATABASE: "humhub"
+      MYSQL_USER: "humhub"
+      MYSQL_PASSWORD: "humhub"
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-phumhub-root"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+volumes:
+  humhub-config:
+  humhub-uploads:
+  mysql-data:

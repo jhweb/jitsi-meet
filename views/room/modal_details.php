@@ -190,8 +190,8 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the MP4 video file of the entire session.') ?></p>
                                 </a>
                             <?php else: ?>
-                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
-                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording (Expired)') ?></h4>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: var(--background-color-page);">
+                                    <h4 class="list-group-item-heading" style="color: var(--text-color-secondary);"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Full Recording (Expired)') ?></h4>
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
                                 </div>
                             <?php endif; ?>
@@ -204,8 +204,8 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Auto-generated highlights summary.') ?></p>
                                 </a>
                             <?php else: ?>
-                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
-                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video (Expired)') ?></h4>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: var(--background-color-page);">
+                                    <h4 class="list-group-item-heading" style="color: var(--text-color-secondary);"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Highlights Video (Expired)') ?></h4>
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
                                 </div>
                             <?php endif; ?>
@@ -225,8 +225,8 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                         <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download the full chat history.') ?></p>
                                     </a>
                                 <?php else: ?>
-                                    <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
-                                        <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log (Expired)') ?></h4>
+                                    <div class="list-group-item disabled" style="opacity: 0.6; background: var(--background-color-page);">
+                                        <h4 class="list-group-item-heading" style="color: var(--text-color-secondary);"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Chat Log (Expired)') ?></h4>
                                         <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
                                     </div>
                                 <?php endif; ?>
@@ -239,8 +239,8 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Download text transcription.') ?></p>
                                 </a>
                             <?php else: ?>
-                                <div class="list-group-item disabled" style="opacity: 0.6; background: #f9f9f9;">
-                                    <h4 class="list-group-item-heading" style="color: #999;"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription (Expired)') ?></h4>
+                                <div class="list-group-item disabled" style="opacity: 0.6; background: var(--background-color-page);">
+                                    <h4 class="list-group-item-heading" style="color: var(--text-color-secondary);"><i class="fa fa-ban"></i> <?= Yii::t('JitsiMeetCloud8x8Module.base', 'Transcription (Expired)') ?></h4>
                                     <p class="list-group-item-text text-muted"><?= Yii::t('JitsiMeetCloud8x8Module.base', 'File no longer available.') ?></p>
                                 </div>
                             <?php endif; ?>
@@ -267,7 +267,7 @@ if ($stream->status == \humhubContrib\modules\jitsiMeetCloud8x8\models\JitsiLive
                                 <div class="reactions-container" style="margin-bottom: 20px;">
                                     <?php foreach ($reactions as $emoji => $count): ?>
                                         <span class="badge" style="background: var(--jitsi-card-bg); color: var(--jitsi-text-primary); border: 1px solid var(--jitsi-border-color); font-size: 14px; margin-right: 5px; padding: 5px 10px;">
-                                            <?= $emoji ?> <span style="margin-left: 5px; font-weight: bold; color: var(--primary);"><?= $count ?></span>
+                                            <?= Html::encode($emoji) ?> <span style="margin-left: 5px; font-weight: bold; color: var(--primary);"><?= $count ?></span>
                                         </span>
                                     <?php endforeach; ?>
                                 </div>
