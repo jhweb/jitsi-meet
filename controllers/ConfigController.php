@@ -18,7 +18,7 @@ class ConfigController extends \humhub\modules\admin\components\Controller
     {
         $form = $this->module->getSettingsForm();
 
-        if ($form->load(Yii::$app->request->post()) && $form->save()) {
+        if ($form->load(Yii::$app->request->post()) && $form->validate() && $form->save()) {
             $this->view->saved();
         }
 

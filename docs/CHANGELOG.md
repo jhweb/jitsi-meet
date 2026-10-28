@@ -27,6 +27,12 @@ Changelog
 - Raise minimum HumHub to **1.17** and PHP to **8.1** (matches HumHub 1.17 floor).
 - Brand-neutral defaults; module identity `jitsi-meet-cloud-8x8` / `jhweb/jitsi-meet`.
 - Standalone repo packaging: README, LICENSE, SECURITY.md, CONTRIBUTING.md.
+- Fix #55: Remove `meet.ffmuc.net` server ([not embeddable anymore](https://ffmuc.net/freifunk/infrastruktur/community/2026/03/19/iframe-embedding-einschraenkungen/#en))
+
+1.2.2 (July 8, 2026)
+--------------------
+- Fix #49: "Open in new window?" not working on mobile app
+- Fix #54: Remove deprecations
 
 1.2.1 (October 13, 2025)
 ------------------------

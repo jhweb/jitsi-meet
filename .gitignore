@@ -5,6 +5,7 @@ nbproject
 .DS_Store
 jmeet-dec21-stylesfixes.zip
 .github/feature-prd.md
+/vendor
 
 # Local Docker HumHub 1.17 state (Child 1)
 docker/humhub-data/
@@ -12,3 +13,10 @@ docker/mysql-data/
 docker/keys/*
 !docker/keys/.gitkeep
 !docker/keys/README.md
+
+# Machine-local agent and tooling files
+.braindrain/
+.cursor/
+.ruler/
+scripts/
+package-lock.json

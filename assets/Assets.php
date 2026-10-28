@@ -10,9 +10,7 @@ use yii\web\View;
 class Assets extends AssetBundle
 {
 
-    public $publishOptions = [
-        'forceCopy' => true
-    ];
+    public $publishOptions = [];
 
     public $jsOptions = [
         'position' => View::POS_BEGIN
@@ -26,6 +24,9 @@ class Assets extends AssetBundle
     {
         $this->initJitsiApiJs();
         $this->sourcePath = dirname(__FILE__) . '/../resources';
+        if (YII_DEBUG) {
+            $this->publishOptions['forceCopy'] = true;
+        }
         parent::init();
     }
 
@@ -34,17 +35,9 @@ class Assets extends AssetBundle
         /** @var Module $module */
         $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
         if ($module instanceof Module) {
-            $mode = $module->getSettingsForm()->mode;
-            if ($mode === 'jaas') {
-                $domain = $module->getSettingsForm()->jaasDomain ?: '8x8.vc';
-                $this->js = [
-                    'humhub.jitsiMeet.js'
-                ];
-            } else {
-                $this->js = [
-                    'humhub.jitsiMeet.js'
-                ];
-            }
+            $this->js = [
+                'humhub.jitsiMeet.js'
+            ];
         }
     }
 
