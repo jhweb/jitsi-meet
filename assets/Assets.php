@@ -35,17 +35,9 @@ class Assets extends AssetBundle
         /** @var Module $module */
         $module = Yii::$app->getModule('jitsi-meet-cloud-8x8');
         if ($module instanceof Module) {
-            $mode = $module->getSettingsForm()->mode;
-            if ($mode === 'jaas') {
-                $domain = $module->getSettingsForm()->jaasDomain ?: '8x8.vc';
-                $this->js = [
-                    'humhub.jitsiMeet.js'
-                ];
-            } else {
-                $this->js = [
-                    'humhub.jitsiMeet.js'
-                ];
-            }
+            $this->js = [
+                'humhub.jitsiMeet.js'
+            ];
         }
     }
 

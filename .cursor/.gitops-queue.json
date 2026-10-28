@@ -1,0 +1,183 @@
+[
+  {
+    "action": "branch-setup",
+    "branchName": "bugfix/humhub-jitsi-module-improvements",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi_module_improvements_0e48bb7c.plan.md",
+    "status": "done",
+    "source": "daily_plan_audit"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "docs",
+    "branchName": "docs/child-1-docker-dev-environment-and-webho",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-dev-env-docker.plan.md",
+    "planHash": "12623352",
+    "detectedAt": "2026-07-27T15:00:25Z",
+    "status": "cancelled",
+    "cancelReason": "Superseded: use explicit child branches and jitsi-meet-improved base (coordinator 2026-07-27)"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "feature",
+    "branchName": "feature/child-8-room-ui-accessibility-and-tour-t",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-room-ui-a11y.plan.md",
+    "planHash": "63de7e91",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "bugfix",
+    "branchName": "bugfix/child-5-permission-wiring-and-container-",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-sec-authorization.plan.md",
+    "planHash": "3baa7903",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "bugfix",
+    "branchName": "bugfix/child-4-jwt-server-side-only-and-moderat",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-sec-jwt-server-side.plan.md",
+    "planHash": "56e4d4f5",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "chore",
+    "branchName": "chore/child-9-standalone-repo-packaging-and-do",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-repo-packaging.plan.md",
+    "planHash": "ec824a15",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "bugfix",
+    "branchName": "bugfix/child-6-ssrf-allowlist-and-mass-assignme",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-sec-ssrf-allowlist.plan.md",
+    "planHash": "ef09761b",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "bugfix",
+    "branchName": "bugfix/child-3-webhook-fail-closed-and-required",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-sec-webhook-failclosed.plan.md",
+    "planHash": "0a5d6a02",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "chore",
+    "branchName": "chore/child-10-staging-verification-and-releas",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-qa-staging.plan.md",
+    "planHash": "0e527bdf",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "chore",
+    "branchName": "chore/child-1-docker-dev-environment-and-webho",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-dev-env-docker.plan.md",
+    "planHash": "025741ad",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "chore",
+    "branchName": "chore/child-2-branding-neutralization-and-modu",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-brand-neutralization.plan.md",
+    "planHash": "5df58b6c",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "feature",
+    "branchName": "feature/child-7-admin-settings-gui-on-humhub-act",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi-settings-gui.plan.md",
+    "planHash": "c91db12b",
+    "detectedAt": "2026-08-05T08:25:21Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "branchName": "bugfix/jitsi-module-hardening-meta-f78868ce",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi_module_hardening_meta_f78868ce.plan.md",
+    "status": "done",
+    "source": "daily_plan_audit"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "bugfix",
+    "branchName": "bugfix/close-out-sequence",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/jitsi_module_hardening_meta_f78868ce.plan.md",
+    "planHash": "7ff035c8",
+    "detectedAt": "2026-09-27T06:28:58Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "branchName": "feature/oil-press-automation-platform",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/oil_press_automation_platform_01b71835.plan.md",
+    "status": "done",
+    "source": "daily_plan_audit"
+  },
+  {
+    "action": "branch-setup",
+    "branchName": "feature/oil-press-studio-local-docker-dashboard-",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/oil_press_studio_mvp_010bbd50.plan.md",
+    "status": "done",
+    "source": "daily_plan_audit"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "feature",
+    "branchName": "feature/oil-press-studio-local-docker-dashboard-",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/oil_press_studio_mvp_010bbd50.plan.md",
+    "planHash": "903f359f",
+    "detectedAt": "2026-10-02T07:44:27Z",
+    "status": "pending"
+  },
+  {
+    "action": "branch-setup",
+    "branchName": "feature/multi-provider-status-roles-and-setup-he",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/provider_roles_and_help_e6a18bc3.plan.md",
+    "status": "done",
+    "source": "daily_plan_audit"
+  },
+  {
+    "action": "branch-setup",
+    "planType": "docs",
+    "branchName": "docs/local-faster-whisper-optional-install",
+    "baseBranch": "master",
+    "planSource": ".cursor/plans/local_whisper_optional_install_b4e91c2a.plan.md",
+    "planHash": "96a282f2",
+    "detectedAt": "2026-10-23T14:29:42Z",
+    "status": "pending"
+  }
+]

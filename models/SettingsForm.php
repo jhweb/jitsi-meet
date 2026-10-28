@@ -92,6 +92,40 @@ class SettingsForm extends Model
     }
 
     /**
+     * @inheritdoc
+     */
+    public function attributeLabels()
+    {
+        return [
+            'jitsiDomain' => Yii::t('JitsiMeetCloud8x8Module.base', 'Jitsi Domain'),
+            'menuTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Menu Title'),
+            'roomPrefix' => Yii::t('JitsiMeetCloud8x8Module.base', 'Room Prefix'),
+            'jitsiAppID' => Yii::t('JitsiMeetCloud8x8Module.base', 'Jitsi App ID'),
+            'jitsiAppSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Jitsi App Secret'),
+            'enableJwt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable JWT Authentication'),
+            'mode' => Yii::t('JitsiMeetCloud8x8Module.base', 'Meeting Mode'),
+            'jaasAppId' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS App ID'),
+            'jaasKid' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS API Key (kid)'),
+            'jaasPrivateKeyPath' => Yii::t('JitsiMeetCloud8x8Module.base', 'Private Key Path'),
+            'jaasWebhookSecret' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Secret'),
+            'jaasWebhookDriftTolerance' => Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook Drift Tolerance (seconds)'),
+            'jaasDomain' => Yii::t('JitsiMeetCloud8x8Module.base', 'JaaS Domain'),
+            'jaasEnableRecording' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable JaaS Recording'),
+            'jaasEnableLivestreaming' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable JaaS Livestreaming'),
+            'jaasEnableModeration' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable JaaS Moderation'),
+            'defaultRecordingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Recording Enabled'),
+            'defaultLivestreamingEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Livestreaming Enabled'),
+            'defaultModerationEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default Moderation Enabled'),
+            'enableLiveStreamWidget' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Live Stream Widget'),
+            'liveStreamWidgetTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Widget Title'),
+            'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Live Stream Room Name'),
+            'entriesPerPage' => Yii::t('JitsiMeetCloud8x8Module.base', 'Entries Per Page'),
+            'enableTour' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable User Guide Tour'),
+            'enableScheduling' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable Scheduling'),
+        ];
+    }
+
+    /**
      * Validate JaaS App ID format
      */
     public function validateJaasAppId($attribute, $params)
@@ -170,7 +204,6 @@ class SettingsForm extends Model
             'defaultModerationEnabled' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable moderation features by default.'),
             'enableLiveStreamWidget' => Yii::t('JitsiMeetCloud8x8Module.base', 'Show a live stream widget in the dashboard sidebar.'),
             'liveStreamWidgetTitle' => Yii::t('JitsiMeetCloud8x8Module.base', 'Title of the live stream widget.'),
-            'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
             'liveStreamRoomName' => Yii::t('JitsiMeetCloud8x8Module.base', 'Default room name to join from the widget.'),
             'entriesPerPage' => Yii::t('JitsiMeetCloud8x8Module.base', 'Number of entries per page in the ended streams list.'),
             'enableTour' => Yii::t('JitsiMeetCloud8x8Module.base', 'Enable the guided tour for first-time users.'),
@@ -288,7 +321,6 @@ class SettingsForm extends Model
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasPrivateKeyPath', $this->jaasPrivateKeyPath);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasWebhookSecret', $this->jaasWebhookSecret);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
-        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasDomain', $this->jaasDomain);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableRecording', (int)$this->jaasEnableRecording);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableLivestreaming', (int)$this->jaasEnableLivestreaming);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('jaasEnableModeration', (int)$this->jaasEnableModeration);
@@ -301,7 +333,6 @@ class SettingsForm extends Model
 
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableLiveStreamWidget', (int)$this->enableLiveStreamWidget);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamWidgetTitle', $this->liveStreamWidgetTitle);
-        Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('liveStreamRoomName', $this->liveStreamRoomName);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('entriesPerPage', (int)$this->entriesPerPage);
         Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->set('enableTour', (int)$this->enableTour);
