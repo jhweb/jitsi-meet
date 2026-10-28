@@ -61,7 +61,7 @@ $keySize = $keyExists ? @filesize($keyPath) : false;
         </div>
         <?php endif; ?>
 
-        <div class="form-group field-settingsform-jitsidomain">
+        <div class="form-group field-settingsform-jitsidomain<?= $model->hasErrors('jitsiDomain') ? ' has-error' : '' ?>">
             <?= Html::label($model->getAttributeLabel('jitsiDomain'), 'settingsform-jitsidomain', ['class' => 'control-label']) ?>
             <?= Html::dropDownList('SettingsForm[jitsiDomainSelect]', $dropdownValue, $allDomainOptions, [
                 'id' => 'settingsform-jitsidomain',
@@ -74,6 +74,7 @@ $keySize = $keyExists ? @filesize($keyPath) : false;
                 ]) ?>
             </div>
             <?= Html::hiddenInput('SettingsForm[jitsiDomain]', $model->jitsiDomain, ['id' => 'settingsform-jitsidomain-value']) ?>
+            <?= Html::error($model, 'jitsiDomain', ['class' => 'help-block help-block-error']) ?>
             <?php if ($hint = $model->getAttributeHint('jitsiDomain')): ?>
                 <p class="help-block"><?= $hint ?></p>
             <?php endif; ?>
@@ -146,7 +147,7 @@ $keySize = $keyExists ? @filesize($keyPath) : false;
 
         <?= $form->endCollapsibleFields() ?>
 
-        <?php if ($model->mode === 'jaas'): ?>
+        <div class="jitsi-debug-section<?= $model->mode === 'jaas' ? '' : ' hide' ?>">
         <?= $form->beginCollapsibleFields(Yii::t('JitsiMeetCloud8x8Module.base', 'Debug'), false) ?>
 
         <div class="row">
@@ -233,7 +234,7 @@ $keySize = $keyExists ? @filesize($keyPath) : false;
         </div>
 
         <?= $form->endCollapsibleFields() ?>
-        <?php endif; ?>
+        </div>
 
         <?= Button::save()->submit() ?>
         <?php ActiveForm::end() ?>

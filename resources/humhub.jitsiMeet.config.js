@@ -4,13 +4,26 @@ humhub.module('jitsiMeet.config', function (module, require, $) {
 
     var CUSTOM_DOMAIN = '__custom__';
 
+    var showElement = function ($el) {
+        $el.removeClass('hide').show();
+    };
+
+    var hideElement = function ($el) {
+        $el.addClass('hide').hide();
+    };
+
     var displayJwtParams = function () {
+        if ($('#settingsform-mode').val() === 'jaas') {
+            hideElement($('.field-settingsform-jitsiappid'));
+            hideElement($('.field-settingsform-jitsiappsecret'));
+            return;
+        }
         if ($('#settingsform-enablejwt').is(':checked')) {
-            $('.field-settingsform-jitsiappid').show();
-            $('.field-settingsform-jitsiappsecret').show();
+            showElement($('.field-settingsform-jitsiappid'));
+            showElement($('.field-settingsform-jitsiappsecret'));
         } else {
-            $('.field-settingsform-jitsiappid').hide();
-            $('.field-settingsform-jitsiappsecret').hide();
+            hideElement($('.field-settingsform-jitsiappid'));
+            hideElement($('.field-settingsform-jitsiappsecret'));
         }
     };
 
@@ -25,24 +38,35 @@ humhub.module('jitsiMeet.config', function (module, require, $) {
             '.field-settingsform-jaasdomain',
             '.field-settingsform-jaasenablerecording',
             '.field-settingsform-jaasenablelivestreaming',
-            '.field-settingsform-jaasenablemoderation'
+            '.field-settingsform-jaasenablemoderation',
+            '.jitsi-debug-section'
+        ];
+        var selfHostedFields = [
+            '.field-settingsform-jitsidomain',
+            '.field-settingsform-enablejwt'
         ];
 
         jaasFields.forEach(function (selector) {
             if (isJaas) {
-                $(selector).show();
+                showElement($(selector));
             } else {
-                $(selector).hide();
+                hideElement($(selector));
             }
         });
-    };
 
-    var toggleJitsiDomainTextInput = function () {
-        var customWrap = $('.field-settingsform-jitsidomain-custom');
-        if ($('#settingsform-jitsidomain').val() === CUSTOM_DOMAIN) {
-            customWrap.removeClass('hide').show();
+        selfHostedFields.forEach(function (selector) {
+            if (isJaas) {
+                hideElement($(selector));
+            } else {
+                showElement($(selector));
+            }
+        });
+
+        if (isJaas) {
+            hideElement($('.field-settingsform-jitsiappid'));
+            hideElement($('.field-settingsform-jitsiappsecret'));
         } else {
-            customWrap.addClass('hide').hide();
+            displayJwtParams();
         }
     };
 
@@ -54,10 +78,21 @@ humhub.module('jitsiMeet.config', function (module, require, $) {
         $('#settingsform-jitsidomain-value').val(value);
     };
 
+    var toggleJitsiDomainTextInput = function () {
+        var customWrap = $('.field-settingsform-jitsidomain-custom');
+        if ($('#settingsform-jitsidomain').val() === CUSTOM_DOMAIN) {
+            showElement(customWrap);
+        } else {
+            hideElement(customWrap);
+        }
+        prepareJitsiDomainSubmit();
+    };
+
     var registerCopyWebhookHandler = function () {
         action.registerHandler('jitsiCopyWebhookUrl', function (evt) {
             var url = $('#jitsi-webhook-url').val();
-            clipboard.writeText(url).then(function () {
+            var cb = (window.clipboard && window.clipboard.writeText) ? window.clipboard : navigator.clipboard;
+            cb.writeText(url).then(function () {
                 status.success(module.text('webhookUrlCopied'));
             }).catch(function () {
                 status.error(module.text('webhookUrlCopyFailed'), true);
@@ -70,11 +105,13 @@ humhub.module('jitsiMeet.config', function (module, require, $) {
         displayJwtParams();
         displayJaas();
         toggleJitsiDomainTextInput();
+        prepareJitsiDomainSubmit();
         registerCopyWebhookHandler();
 
         $(document.body).on('change', '#settingsform-enablejwt', displayJwtParams);
         $(document.body).on('change', '#settingsform-mode', displayJaas);
         $(document.body).on('change', '#settingsform-jitsidomain', toggleJitsiDomainTextInput);
+        $(document.body).on('input change', '#settingsform-jitsidomain-custom', prepareJitsiDomainSubmit);
         $('#configure-form').on('submit', prepareJitsiDomainSubmit);
     };
 
