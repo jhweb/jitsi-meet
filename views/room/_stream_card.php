@@ -59,7 +59,7 @@ if ($isLive) {
 }
 
 // Determine Creator
-$creatorName = $stream->creator ? $stream->creator->displayName : 'The Oil Press';
+$creatorName = $stream->creator ? $stream->creator->displayName : Yii::$app->name;
 ?>
 
 <div class="stream-card-v2 <?= $statusClass ?>">

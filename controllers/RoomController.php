@@ -41,8 +41,8 @@ class RoomController extends Controller
             ['permissions' => [CanSchedule::class], 'actions' => ['schedule', 'delete', 'edit']],
             ['permissions' => [CreateVideoChat::class], 'actions' => ['create']],
             ['permissions' => [JoinVideoChat::class], 'actions' => ['open', 'modal']],
-            // details: ManageRecordings is enforced in actionDetails together with creator/container checks
-            ['login', 'actions' => ['details']],
+            // details/event actions: container/creator/ManageRecordings enforced in the actions
+            ['login', 'actions' => ['details', 'view-event', 'attend', 'toggle-reminder']],
         ];
     }
 
@@ -753,6 +753,10 @@ class RoomController extends Controller
             throw new \yii\web\NotFoundHttpException('Event not found.');
         }
 
+        if (!$this->canAccessStreamDetails($stream)) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
+        }
+
         $calendarEntry = $stream->calendarEntry;
         
         // Get current user's participation status
@@ -817,6 +821,10 @@ class RoomController extends Controller
         if (!$stream || !$stream->calendarEntry) {
             throw new \yii\web\NotFoundHttpException();
         }
+
+        if (!$this->canAccessStreamDetails($stream)) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
+        }
         
         $calendarEntry = $stream->calendarEntry;
         $userContainer = Yii::$app->user->getIdentity()->contentContainerRecord;
@@ -880,6 +888,10 @@ class RoomController extends Controller
         $stream = JitsiLiveStream::findOne($id);
         if (!$stream || !$stream->calendarEntry) {
             throw new \yii\web\NotFoundHttpException('Event not found.');
+        }
+
+        if (!$this->canAccessStreamDetails($stream)) {
+            throw new \yii\web\ForbiddenHttpException(Yii::t('JitsiMeetCloud8x8Module.base', 'You are not allowed to view this stream.'));
         }
 
         $calendarEntry = $stream->calendarEntry;
@@ -1087,11 +1099,16 @@ class RoomController extends Controller
             return true;
         }
 
-        if (Yii::$app->user->can(ManageRecordings::class)) {
-            return true;
+        if ($stream->space_id) {
+            if ($stream->space) {
+                if ($stream->space->isMember($user) || $stream->space->can(ManageRecordings::class)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        if ($stream->space_id && $stream->space && $stream->space->isMember($user)) {
+        if (Yii::$app->user->can(ManageRecordings::class)) {
             return true;
         }
 
@@ -1170,7 +1187,7 @@ class RoomController extends Controller
             $name = Yii::$app->user->getIdentity()->profile->firstname;
             $name .= " Square";
         }
-        $name = ucwords($name);
+        $name = ucwords((string) $name);
         $name = preg_replace("/[^A-Za-z0-9]/", '', $name);
 
         return $name;

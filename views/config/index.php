@@ -88,6 +88,14 @@ $this->registerJs($script);
 
         <?= $form->field($model, 'mode')->dropDownList(['self_hosted' => 'Self-Hosted Jitsi', 'jaas' => '8x8 JaaS (Cloud)']); ?>
 
+        <?php if ($model->mode === 'jaas' && empty($model->jaasWebhookSecret)): ?>
+        <div class="alert alert-warning alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="<?= Yii::t('JitsiMeetCloud8x8Module.base', 'Close') ?>"><span aria-hidden="true">&times;</span></button>
+            <strong><?= Yii::t('JitsiMeetCloud8x8Module.base', 'Webhook security:') ?></strong>
+            <?= Yii::t('JitsiMeetCloud8x8Module.base', 'No webhook secret is configured. All incoming JaaS webhooks are being rejected until you set the Webhook Secret below and save. Copy the same secret from your 8x8 JaaS Console webhook settings.') ?>
+        </div>
+        <?php endif; ?>
+
         <?= $form->field($model, 'jitsiDomain')->dropDownList(SettingsForm::defaultJitsiDomainOptions(), ['prompt' => Yii::t('JitsiMeetCloud8x8Module.base', 'Custom domain')])->hint('') ?>
         <?= $form->field($model, 'jitsiDomain')->textInput(['id' => 'settingsform-jitsidomain-text'])->label('') ?>
         <?= $form->field($model, 'roomPrefix'); ?>

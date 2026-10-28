@@ -31,12 +31,15 @@ class Events
             'label' => Yii::t('JitsiMeetCloud8x8Module.base', $module->getSettingsForm()->menuTitle),
             'url' => ['/jitsi-meet-cloud-8x8/room'],
             'icon' => 'video-camera',
-            'isActive' => MenuLink::isActiveState('jitsi-meet-cloud-8x8', 'room'),
+'isActive' => MenuLink::isActiveState('jitsi-meet-cloud-8x8', 'room'),
             'sortOrder' => 400,
         ];
         
         if ($activeCount > 0) {
-            $entryOptions['htmlOptions'] = ['class' => 'jitsi-menu-live'];
+            $entryOptions['htmlOptions'] = [
+                'class' => 'jitsi-menu-live',
+                'aria-label' => Yii::t('JitsiMeetCloud8x8Module.base', 'Live streams ({count} active)', ['count' => $activeCount]),
+            ];
             
             // Register the indicator CSS globally so it shows on all pages
             Yii::$app->view->registerCss('
@@ -44,6 +47,14 @@ class Events
                     0% { opacity: 1; }
                     50% { opacity: 0.4; }
                     100% { opacity: 1; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    @keyframes blinkRed {
+                        0%, 100% { opacity: 1; }
+                    }
+                    .jitsi-menu-live .fa-video-camera::after {
+                        animation: none;
+                    }
                 }
                 .jitsi-menu-live .fa-video-camera {
                     position: relative;
@@ -55,10 +66,10 @@ class Events
                     right: -2px;
                     width: 6px;
                     height: 6px;
-                    background-color: #ff0000;
+                    background-color: var(--danger, #fc4a64);
                     border-radius: 50%;
                     animation: blinkRed 1.5s infinite;
-                    border: 1px solid #fff;
+                    border: 1px solid var(--background-color-main, #fff);
                 }
             ', [], 'jitsi-menu-live-indicator');
         }

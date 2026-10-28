@@ -165,16 +165,16 @@ class WebhookController extends Controller
              // We will check if secret is configured.
              $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
              if (empty($secret)) {
-                 Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
-                 return true;
+                 Yii::error('Jitsi Webhook: webhook secret is unconfigured', 'jitsi-meet-cloud-8x8');
+                 return false;
              }
              return false;
         }
 
         $secret = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookSecret');
         if (empty($secret)) {
-            Yii::info("Jitsi Webhook: Security skipped (No Secret Configured)", 'jitsi-meet-cloud-8x8');
-            return true; 
+            Yii::error('Jitsi Webhook: webhook secret is unconfigured', 'jitsi-meet-cloud-8x8');
+            return false;
         }
 
         // Parse Header
@@ -202,10 +202,10 @@ class WebhookController extends Controller
         // Payload timestamp: 1632490058278 (ms).
         // Payload timestamp: 1632490058278 (ms).
         // Header 't' is likely seconds.
-        $tolerance = (int) Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
-        if (empty($tolerance) && $tolerance !== 0) {
-             $tolerance = 300;
-        }
+        $rawTolerance = Yii::$app->getModule('jitsi-meet-cloud-8x8')->settings->get('jaasWebhookDriftTolerance');
+        $tolerance = ($rawTolerance === null || $rawTolerance === '' || (int) $rawTolerance <= 0)
+            ? 300
+            : (int) $rawTolerance;
 
         $now = time();
         if (abs($now - $timestamp) > $tolerance) {
@@ -226,7 +226,7 @@ class WebhookController extends Controller
             return true;
         }
 
-        Yii::warning("Jitsi Webhook: Signature mismatch. Expected: $expectedSignature, Got: $signature", 'jitsi-meet-cloud-8x8');
+        Yii::warning('Jitsi Webhook: signature mismatch (payload length: ' . strlen($rawBody) . ')', 'jitsi-meet-cloud-8x8');
         return false;
     }
 
